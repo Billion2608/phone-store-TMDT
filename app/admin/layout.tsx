@@ -1,20 +1,28 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-
   const handleLogout = async () => {
     try {
+      // 1. Gọi API xóa Cookie xác thực phía Server
       await fetch("/api/auth/logout", { method: "POST" });
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-      router.push("/login");
-      router.refresh();
     } catch (error) {
-      console.error("Lỗi đăng xuất:", error);
+      console.error("Lỗi gọi API đăng xuất:", error);
+    } finally {
+      // 2. Xóa toàn bộ dữ liệu Client (LocalStorage & SessionStorage)
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // 3. Xóa thủ công toàn bộ Cookie ở phía Client
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+
+      // 4. Ép trình duyệt tải lại hoàn toàn và điều hướng về trang Login
+      window.location.href = "/login";
     }
   };
 
@@ -62,13 +70,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Chân Menu */}
-        <div className="p-3 border-t border-[#6e5645]">
+        <div className="p-3 border-t border-[#6e5645] space-y-1">
           <Link
             href="/"
             className="flex items-center gap-2 px-4 py-2 text-sm text-amber-200 hover:text-white transition-colors"
           >
             ← Xem cửa hàng
           </Link>
+
+          {/* Nút Đăng xuất ở Sidebar */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-300 hover:text-red-100 hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer"
+          >
+            🚪 Đăng xuất
+          </button>
         </div>
       </aside>
 
@@ -99,7 +116,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               🔔
             </button>
 
-            {/* Khối Admin + Nút Đăng xuất */}
+            {/* Khối Admin + Nút Đăng xuất trên Header */}
             <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
               <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-xs font-bold text-amber-800">
                 🛡️
@@ -110,6 +127,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
 
               <button
+                type="button"
                 onClick={handleLogout}
                 className="ml-2 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
               >
