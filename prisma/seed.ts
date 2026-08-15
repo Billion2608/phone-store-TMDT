@@ -1,161 +1,93 @@
-import { PrismaClient } from "@prisma/client";
+const { Client } = require("pg");
 
-const prisma = new PrismaClient();
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
 async function main() {
-  console.log("🌱 Bắt đầu nạp dữ liệu chuẩn với Prisma Client...");
+  await client.connect();
+  console.log("🌱 Đang nạp dữ liệu bằng SQL thuần...");
 
-  // 1. Nạp Người dùng (Users)
-  await prisma.users.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      id: 1,
-      email: "admin@phonestore.com",
-      password: "$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v",
-      full_name: "Administrator",
-      phone: "0900444333",
-      role: "ADMIN" as any,
-      status: "ACTIVE" as any,
-    },
-  });
+  try {
+    // 1. Users
+    await client.query(`
+      INSERT INTO "users" ("id", "email", "password", "full_name", "phone", "role", "status")
+      VALUES 
+        (1, 'admin@phonestore.com', '$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v', 'Administrator', '0900444333', 'ADMIN', 'ACTIVE'),
+        (2, 'user@phonestore.com', '$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v', 'Test User', '0999888777', 'USER', 'ACTIVE')
+      ON CONFLICT ("id") DO NOTHING;
+    `);
 
-  await prisma.users.upsert({
-    where: { id: 2 },
-    update: {},
-    create: {
-      id: 2,
-      email: "user@phonestore.com",
-      password: "$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v",
-      full_name: "Test User",
-      phone: "0999888777",
-      role: "USER" as any,
-      status: "ACTIVE" as any,
-    },
-  });
+    // 2. Categories & Brands
+    await client.query(`
+      INSERT INTO "categories" ("id", "name", "slug", "image", "status")
+      VALUES (1, 'Iphone', 'iphone', '/uploads/products/1785859329187-5f60cf0d-0844-4ac6-b6a1-9720fe6c1b34.webp', true)
+      ON CONFLICT ("id") DO NOTHING;
+    `);
 
-  // 2. Nạp Danh mục & Thương hiệu
-  await prisma.categories.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      id: 1,
-      name: "Iphone",
-      slug: "iphone",
-      image: "/uploads/products/1785859329187-5f60cf0d-0844-4ac6-b6a1-9720fe6c1b34.webp",
-      status: true as any,
-    },
-  });
+    await client.query(`
+      INSERT INTO "brands" ("id", "name", "slug", "logo", "status")
+      VALUES (1, 'Apple', 'apple', '/uploads/products/1785859364394-7b586e5a-7e5b-4f8e-99a9-0b97c8bd20e2.jpg', true)
+      ON CONFLICT ("id") DO NOTHING;
+    `);
 
-  await prisma.brands.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      id: 1,
-      name: "Apple",
-      slug: "apple",
-      logo: "/uploads/products/1785859364394-7b586e5a-7e5b-4f8e-99a9-0b97c8bd20e2.jpg",
-      status: true as any,
-    },
-  });
+    // 3. Products & Product Variants
+    await client.query(`
+      INSERT INTO "products" ("id", "category_id", "brand_id", "name", "slug", "short_description", "description", "status")
+      VALUES (1, 1, 1, 'Iphone', 'iphone', 'Điện thoại Iphone chính hãng', 'Mô tả chi tiết sản phẩm Iphone', 'ACTIVE')
+      ON CONFLICT ("id") DO NOTHING;
+    `);
 
-  // 3. Nạp Sản phẩm & Biến thể
-  const product1 = await prisma.products.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      id: 1,
-      category_id: 1,
-      brand_id: 1,
-      name: "Iphone",
-      slug: "iphone",
-      short_description: "Điện thoại Iphone chính hãng",
-      description: "Mô tả chi tiết sản phẩm Iphone",
-      status: "ACTIVE" as any,
-    },
-  });
+    await client.query(`
+      INSERT INTO "product_variants" ("id", "product_id", "sku", "price", "sale_price", "stock_quantity", "image", "status")
+      VALUES (1, 1, 'IPHONE', 1500000.0, 1300000.0, 145, '/uploads/products/1785859450889-487f4066-85a2-46f5-92ab-977f32d6b8af.webp', true)
+      ON CONFLICT ("id") DO NOTHING;
+    `);
 
-  const variant1 = await prisma.product_variants.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      id: 1,
-      product_id: product1.id,
-      sku: "IPHONE",
-      price: 1500000.0,
-      sale_price: 1300000.0,
-      stock_quantity: 145,
-      image: "/uploads/products/1785859450889-487f4066-85a2-46f5-92ab-977f32d6b8af.webp",
-      status: true as any,
-    },
-  });
+    // 4. Orders
+    await client.query(`
+      INSERT INTO "orders" ("id", "order_code", "user_id", "receiver_name", "receiver_phone", "shipping_address", "subtotal", "shipping_fee", "total_amount", "payment_method", "payment_status", "status")
+      VALUES 
+        (1, 'PS20260804-D07CC57F', 1, 'Administrator', '0900444333', '32C, Phường Tân Hòa, Thành phố Vĩnh Long', 1300000.0, 30000.0, 1330000.0, 'COD', 'UNPAID', 'PENDING'),
+        (2, 'PS20260804-2DA36E5E', 1, 'Administrator', '0900444333', '32C, Phường Tân Hòa, Thành phố Vĩnh Long', 1300000.0, 30000.0, 1330000.0, 'COD', 'UNPAID', 'PENDING'),
+        (3, 'PS20260804-60A270F0', 2, 'Test', '0999888777', '54c, Phường Phúc Xá, Ba Đình, Hà Nội', 1300000.0, 30000.0, 1330000.0, 'COD', 'UNPAID', 'PENDING'),
+        (4, 'PS20260804-CCB542D6', 2, 'Test', '0999888777', '54c, Phường Phúc Xá, Ba Đình, Hà Nội', 1300000.0, 30000.0, 1330000.0, 'VNPAY', 'UNPAID', 'PENDING'),
+        (5, 'PS20260804-B7AE796D', 2, 'Test', '0999888777', '54c, Phường Phúc Xá, Ba Đình, Hà Nội', 1300000.0, 30000.0, 1330000.0, 'COD', 'UNPAID', 'PENDING')
+      ON CONFLICT ("id") DO NOTHING;
+    `);
 
-  // 4. Nạp Hóa đơn / Đơn hàng
-  const ordersData = [
-    { id: 1, code: "PS20260804-D07CC57F", userId: 1, name: "Administrator", phone: "0900444333", address: "32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long", total: 1330000.0, method: "COD" },
-    { id: 2, code: "PS20260804-2DA36E5E", userId: 1, name: "Administrator", phone: "0900444333", address: "32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long", total: 1330000.0, method: "COD" },
-    { id: 3, code: "PS20260804-60A270F0", userId: 2, name: "Test", phone: "0999888777", address: "54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội", total: 1330000.0, method: "COD" },
-    { id: 4, code: "PS20260804-CCB542D6", userId: 2, name: "Test", phone: "0999888777", address: "54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội", total: 1330000.0, method: "VNPAY" },
-    { id: 5, code: "PS20260804-B7AE796D", userId: 2, name: "Test", phone: "0999888777", address: "54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội", total: 1330000.0, method: "COD" },
-  ];
+    // 5. Order Items
+    await client.query(`
+      INSERT INTO "order_items" ("id", "order_id", "variant_id", "product_name", "sku", "product_image", "price", "quantity", "total_price")
+      VALUES 
+        (1, 1, 1, 'Iphone', 'IPHONE', '/uploads/products/1785859450889-487f4066-85a2-46f5-92ab-977f32d6b8af.webp', 1300000.0, 1, 1300000.0),
+        (2, 2, 1, 'Iphone', 'IPHONE', '/uploads/products/1785859450889-487f4066-85a2-46f5-92ab-977f32d6b8af.webp', 1300000.0, 1, 1300000.0),
+        (3, 3, 1, 'Iphone', 'IPHONE', '/uploads/products/1785859450889-487f4066-85a2-46f5-92ab-977f32d6b8af.webp', 1300000.0, 1, 1300000.0),
+        (4, 4, 1, 'Iphone', 'IPHONE', '/uploads/products/1785859450889-487f4066-85a2-46f5-92ab-977f32d6b8af.webp', 1300000.0, 1, 1300000.0),
+        (5, 5, 1, 'Iphone', 'IPHONE', '/uploads/products/1785859450889-487f4066-85a2-46f5-92ab-977f32d6b8af.webp', 1300000.0, 1, 1300000.0)
+      ON CONFLICT ("id") DO NOTHING;
+    `);
 
-  for (const o of ordersData) {
-    await prisma.orders.upsert({
-      where: { id: o.id },
-      update: {},
-      create: {
-        id: o.id,
-        order_code: o.code,
-        user_id: o.userId,
-        receiver_name: o.name,
-        receiver_phone: o.phone,
-        shipping_address: o.address,
-        subtotal: 1300000.0,
-        shipping_fee: 30000.0,
-        total_amount: o.total,
-        payment_method: o.method as any,
-        payment_status: "UNPAID" as any,
-        status: "PENDING" as any,
-      },
-    });
+    // 6. Payments
+    await client.query(`
+      INSERT INTO "payments" ("id", "order_id", "payment_method", "amount", "status")
+      VALUES 
+        (1, 1, 'COD', 1330000.0, 'PENDING'),
+        (2, 2, 'COD', 1330000.0, 'PENDING'),
+        (3, 3, 'COD', 1330000.0, 'PENDING'),
+        (4, 4, 'VNPAY', 1330000.0, 'PENDING'),
+        (5, 5, 'COD', 1330000.0, 'PENDING')
+      ON CONFLICT ("id") DO NOTHING;
+    `);
 
-    await prisma.order_items.upsert({
-      where: { id: o.id },
-      update: {},
-      create: {
-        id: o.id,
-        order_id: o.id,
-        variant_id: variant1.id,
-        product_name: "Iphone",
-        sku: "IPHONE",
-        product_image: "/uploads/products/1785859450889-487f4066-85a2-46f5-92ab-977f32d6b8af.webp",
-        price: 1300000.0,
-        quantity: 1,
-        total_price: 1300000.0,
-      },
-    });
-
-    await prisma.payments.upsert({
-      where: { id: o.id },
-      update: {},
-      create: {
-        id: o.id,
-        order_id: o.id,
-        payment_method: o.method as any,
-        amount: o.total,
-        status: "PENDING" as any,
-      },
-    });
+    console.log("🎉 Nạp dữ liệu hoàn tất!");
+  } catch (err) {
+    console.error("❌ Lỗi nạp dữ liệu:", err.message);
+    process.exit(1);
+  } finally {
+    await client.end();
   }
-
-  console.log("🎉 Hoàn tất nạp dữ liệu!");
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main();
