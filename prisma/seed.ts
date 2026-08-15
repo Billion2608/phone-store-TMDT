@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Bắt đầu nạp đầy đủ Sản phẩm, Người dùng và Hóa đơn...");
 
-  // 1. Nạp Người dùng (Users)
+  // 1. Nạp Người dùng (Users) - status truyền dưới dạng chuỗi Enum
   await prisma.users.upsert({
     where: { id: 1 },
     update: {},
@@ -16,7 +16,7 @@ async function main() {
       full_name: "Administrator",
       phone: "0900444333",
       role: "ADMIN",
-      status: true,
+      status: "ACTIVE" as any,
     },
   });
 
@@ -30,7 +30,7 @@ async function main() {
       full_name: "Test User",
       phone: "0999888777",
       role: "USER",
-      status: true,
+      status: "ACTIVE" as any,
     },
   });
 
@@ -90,7 +90,7 @@ async function main() {
     },
   });
 
-  // 4. Nạp Hóa đơn / Đơn hàng (Orders & Payments)
+  // 4. Nạp Hóa đơn / Đơn hàng
   const ordersData = [
     { id: 1, code: "PS20260804-D07CC57F", userId: 1, name: "Administrator", phone: "0900444333", address: "32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long", total: 1330000.0, method: "COD" },
     { id: 2, code: "PS20260804-2DA36E5E", userId: 1, name: "Administrator", phone: "0900444333", address: "32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long", total: 1330000.0, method: "COD" },
@@ -100,7 +100,6 @@ async function main() {
   ];
 
   for (const o of ordersData) {
-    // Tạo Đơn hàng
     await prisma.orders.upsert({
       where: { id: o.id },
       update: {},
@@ -115,12 +114,11 @@ async function main() {
         shipping_fee: 30000.0,
         total_amount: o.total,
         payment_method: o.method as any,
-        payment_status: "UNPAID",
-        status: "PENDING",
+        payment_status: "UNPAID" as any,
+        status: "PENDING" as any,
       },
     });
 
-    // Tạo Chi tiết Đơn hàng (Order Items)
     await prisma.order_items.upsert({
       where: { id: o.id },
       update: {},
@@ -137,7 +135,6 @@ async function main() {
       },
     });
 
-    // Tạo Thanh toán (Payments)
     await prisma.payments.upsert({
       where: { id: o.id },
       update: {},
@@ -146,7 +143,7 @@ async function main() {
         order_id: o.id,
         payment_method: o.method as any,
         amount: o.total,
-        status: "PENDING",
+        status: "PENDING" as any,
       },
     });
   }
