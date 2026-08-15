@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Client } from "pg";
 
-// 1. TỰ ĐỘNG NẠP 30 SẢN PHẨM KHI TRUY CẬP /api/products
+// 1. KÍCH HOẠT NẠP 30 SẢN PHẨM KHI TRUY CẬP /api/products
 export async function GET() {
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
@@ -12,7 +12,7 @@ export async function GET() {
     await client.connect();
     const now = new Date().toISOString();
 
-    // Tạo danh mục mẫu nếu chưa có
+    // 1. Tạo danh mục mẫu nếu chưa có
     await client.query(`
       INSERT INTO "categories" ("name", "slug", "status", "created_at", "updated_at")
       VALUES 
@@ -22,7 +22,7 @@ export async function GET() {
       ON CONFLICT DO NOTHING;
     `);
 
-    // Tạo thương hiệu mẫu nếu chưa có
+    // 2. Tạo thương hiệu mẫu nếu chưa có
     await client.query(`
       INSERT INTO "brands" ("name", "slug", "status", "created_at", "updated_at")
       VALUES 
@@ -33,15 +33,22 @@ export async function GET() {
       ON CONFLICT DO NOTHING;
     `);
 
-    // Lấy ID thực tế từ DB
+    // 3. Trích xuất ID thực tế (kiểu bigint/integer) từ cơ sở dữ liệu
     const catRes = await client.query('SELECT "id", "name" FROM "categories";');
     const brandRes = await client.query('SELECT "id", "name" FROM "brands";');
 
     const cats = catRes.rows;
     const brands = brandRes.rows;
 
-    const getCatId = (keyword: string) => cats.find((c: any) => c.name.includes(keyword))?.id || cats[0]?.id;
-    const getBrandId = (name: string) => brands.find((b: any) => b.name.toLowerCase() === name.toLowerCase())?.id || brands[0]?.id;
+    const getCatId = (keyword: string) => {
+      const found = cats.find((c: any) => c.name.toLowerCase().includes(keyword.toLowerCase()));
+      return found ? found.id : cats[0]?.id;
+    };
+
+    const getBrandId = (name: string) => {
+      const found = brands.find((b: any) => b.name.toLowerCase() === name.toLowerCase());
+      return found ? found.id : brands[0]?.id;
+    };
 
     const catFlagship = getCatId('flagship');
     const catTamTrung = getCatId('tầm trung');
@@ -52,7 +59,7 @@ export async function GET() {
     const brandXiaomi = getBrandId('Xiaomi');
     const brandOppo = getBrandId('OPPO');
 
-    // Danh sách 30 sản phẩm
+    // 4. Danh sách 30 sản phẩm gắn với ID chuẩn
     const products = [
       { name: "iPhone 15 Pro Max 256GB", cat: catFlagship, brand: brandApple, desc: "Chip A17 Pro, khung Titan siêu nhẹ, camera zoom 5x." },
       { name: "iPhone 15 Pro 128GB", cat: catFlagship, brand: brandApple, desc: "Hiệu năng đỉnh cao, thiết kế viền mỏng ấn tượng." },
@@ -90,6 +97,7 @@ export async function GET() {
       { name: "OPPO A18 128GB", cat: catGiaRe, brand: brandOppo, desc: "Kháng nước chống bụi, pin 5000mAh siêu bền." }
     ];
 
+    // 5. Chèn sản phẩm bằng ID dạng số
     for (const p of products) {
       const slug = p.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "-") + "-" + Math.floor(Math.random() * 1000);
       
@@ -120,7 +128,7 @@ export async function GET() {
   }
 }
 
-// 2. XỬ LÝ FORM THÊM SẢN PHẨM MỚI
+// 2. XỬ LÝ KHI THÊM 1 SẢN PHẨM TỪ FORM ADMIN
 export async function POST(request: Request) {
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
