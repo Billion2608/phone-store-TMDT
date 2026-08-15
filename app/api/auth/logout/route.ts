@@ -1,9 +1,14 @@
-import { cookies } from "next/headers";
-
-import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { successResponse } from "@/lib/api-response";
+import { NextResponse } from "next/server";
 
 export async function POST() {
-  (await cookies()).delete(AUTH_COOKIE_NAME);
-  return successResponse({ message: "Đăng xuất thành công." });
+  const response = NextResponse.json({ message: "Đăng xuất thành công" });
+
+  // Xóa cookie token đăng nhập (thay "token" bằng tên cookie dự án bạn đang dùng nếu khác)
+  response.cookies.set("token", "", {
+    httpOnly: true,
+    expires: new Date(0),
+    path: "/",
+  });
+
+  return response;
 }
