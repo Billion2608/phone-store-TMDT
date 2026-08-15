@@ -1,11 +1,19 @@
-import { PrismaClient } from "@prisma/client";
+import {
+  PrismaClient,
+  users_role,
+  users_status,
+  orders_payment_method,
+  orders_payment_status,
+  orders_status,
+  payments_status,
+} from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("🌱 Bắt đầu nạp đầy đủ Sản phẩm, Người dùng và Hóa đơn...");
 
-  // 1. Nạp Người dùng (Users) - Ép kiểu `as any` cho cả role và status
+  // 1. Nạp Người dùng (Users) - Dùng chính xác Enum từ Prisma Client
   await prisma.users.upsert({
     where: { id: 1 },
     update: {},
@@ -15,8 +23,8 @@ async function main() {
       password: "$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v",
       full_name: "Administrator",
       phone: "0900444333",
-      role: "ADMIN" as any,
-      status: "ACTIVE" as any,
+      role: users_role.ADMIN,
+      status: users_status.ACTIVE,
     },
   });
 
@@ -29,8 +37,8 @@ async function main() {
       password: "$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v",
       full_name: "Test User",
       phone: "0999888777",
-      role: "USER" as any,
-      status: "ACTIVE" as any,
+      role: users_role.USER,
+      status: users_status.ACTIVE,
     },
   });
 
@@ -92,11 +100,11 @@ async function main() {
 
   // 4. Nạp Hóa đơn / Đơn hàng
   const ordersData = [
-    { id: 1, code: "PS20260804-D07CC57F", userId: 1, name: "Administrator", phone: "0900444333", address: "32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long", total: 1330000.0, method: "COD" },
-    { id: 2, code: "PS20260804-2DA36E5E", userId: 1, name: "Administrator", phone: "0900444333", address: "32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long", total: 1330000.0, method: "COD" },
-    { id: 3, code: "PS20260804-60A270F0", userId: 2, name: "Test", phone: "0999888777", address: "54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội", total: 1330000.0, method: "COD" },
-    { id: 4, code: "PS20260804-CCB542D6", userId: 2, name: "Test", phone: "0999888777", address: "54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội", total: 1330000.0, method: "VNPAY" },
-    { id: 5, code: "PS20260804-B7AE796D", userId: 2, name: "Test", phone: "0999888777", address: "54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội", total: 1330000.0, method: "COD" },
+    { id: 1, code: "PS20260804-D07CC57F", userId: 1, name: "Administrator", phone: "0900444333", address: "32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long", total: 1330000.0, method: orders_payment_method.COD },
+    { id: 2, code: "PS20260804-2DA36E5E", userId: 1, name: "Administrator", phone: "0900444333", address: "32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long", total: 1330000.0, method: orders_payment_method.COD },
+    { id: 3, code: "PS20260804-60A270F0", userId: 2, name: "Test", phone: "0999888777", address: "54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội", total: 1330000.0, method: orders_payment_method.COD },
+    { id: 4, code: "PS20260804-CCB542D6", userId: 2, name: "Test", phone: "0999888777", address: "54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội", total: 1330000.0, method: orders_payment_method.VNPAY },
+    { id: 5, code: "PS20260804-B7AE796D", userId: 2, name: "Test", phone: "0999888777", address: "54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội", total: 1330000.0, method: orders_payment_method.COD },
   ];
 
   for (const o of ordersData) {
@@ -113,9 +121,9 @@ async function main() {
         subtotal: 1300000.0,
         shipping_fee: 30000.0,
         total_amount: o.total,
-        payment_method: o.method as any,
-        payment_status: "UNPAID" as any,
-        status: "PENDING" as any,
+        payment_method: o.method,
+        payment_status: orders_payment_status.UNPAID,
+        status: orders_status.PENDING,
       },
     });
 
@@ -143,7 +151,7 @@ async function main() {
         order_id: o.id,
         payment_method: o.method as any,
         amount: o.total,
-        status: "PENDING" as any,
+        status: payments_status.PENDING,
       },
     });
   }
