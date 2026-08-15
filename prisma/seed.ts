@@ -2,6 +2,10 @@ import {
   PrismaClient,
   users_role,
   users_status,
+  products_status,
+  categories_status,
+  brands_status,
+  product_variants_status,
   orders_payment_method,
   orders_payment_status,
   orders_status,
@@ -13,7 +17,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Bắt đầu nạp đầy đủ Sản phẩm, Người dùng và Hóa đơn...");
 
-  // 1. Nạp Người dùng (Users) - Dùng chính xác Enum từ Prisma Client
+  // 1. Nạp Người dùng (Users)
   await prisma.users.upsert({
     where: { id: 1 },
     update: {},
@@ -42,7 +46,7 @@ async function main() {
     },
   });
 
-  // 2. Nạp Danh mục & Thương hiệu
+  // 2. Nạp Danh mục & Thương hiệu (Dùng Enum hoặc 'ACTIVE' / true)
   await prisma.categories.upsert({
     where: { id: 1 },
     update: {},
@@ -51,7 +55,7 @@ async function main() {
       name: "Iphone",
       slug: "iphone",
       image: "/uploads/products/1785859329187-5f60cf0d-0844-4ac6-b6a1-9720fe6c1b34.webp",
-      status: true,
+      status: (categories_status?.ACTIVE ?? "ACTIVE") as any,
     },
   });
 
@@ -63,7 +67,7 @@ async function main() {
       name: "Apple",
       slug: "apple",
       logo: "/uploads/products/1785859364394-7b586e5a-7e5b-4f8e-99a9-0b97c8bd20e2.jpg",
-      status: true,
+      status: (brands_status?.ACTIVE ?? "ACTIVE") as any,
     },
   });
 
@@ -79,7 +83,7 @@ async function main() {
       slug: "iphone",
       short_description: "Điện thoại Iphone chính hãng",
       description: "Mô tả chi tiết sản phẩm Iphone",
-      status: true,
+      status: (products_status?.ACTIVE ?? "ACTIVE") as any,
     },
   });
 
@@ -94,7 +98,7 @@ async function main() {
       sale_price: 1300000.0,
       stock_quantity: 145,
       image: "/uploads/products/1785859450889-487f4066-85a2-46f5-92ab-977f32d6b8af.webp",
-      status: true,
+      status: (product_variants_status?.ACTIVE ?? "ACTIVE") as any,
     },
   });
 
