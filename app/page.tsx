@@ -22,11 +22,11 @@ interface BrandItem {
 }
 
 interface BannerItem {
-  id: string | number;
-  title?: string;
+  id: string;
+  title: string;
   subtitle?: string;
   image: string;
-  href?: string;
+  href: string;
   buttonText?: string;
 }
 
@@ -72,13 +72,12 @@ export default async function Home() {
       image: product.thumbnail || "",
       href: `/products/${product.slug}`,
       buttonText: "Xem sản phẩm",
+      cover: true,
     }));
 
-  const slides = (
-  banners.length
+  const slides = banners.length
     ? banners.map((banner: BannerItem) => ({ ...banner, cover: true }))
-    : fallbackSlides
-) as any;
+    : fallbackSlides;
 
   return (
     <div className="bg-[#fdfbf7] pb-8">
