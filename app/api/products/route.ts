@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Client } from "pg";
 
-// 1. TỰ ĐỘNG NẠP 30 SẢN PHẨM KHI TRUY CẬP ĐƯỜNG DẪN /api/products TRÊN TRÌNH DUYỆT
+// 1. TỰ ĐỘNG NẠP 30 SẢN PHẨM KHI TRUY CẬP /api/products
 export async function GET() {
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
@@ -12,24 +12,24 @@ export async function GET() {
     await client.connect();
     const now = new Date().toISOString();
 
-    // Tạo danh mục mẫu
+    // Tạo danh mục mẫu (chỉ dùng các cột chuẩn: id, name, slug, status, created_at, updated_at)
     await client.query(`
-      INSERT INTO "categories" ("id", "name", "slug", "description", "status", "created_at", "updated_at")
+      INSERT INTO "categories" ("id", "name", "slug", "status", "created_at", "updated_at")
       VALUES 
-        ('cat-1', 'Điện thoại flagship', 'dien-thoai-flagship', 'Dòng cao cấp nhất', true, '${now}', '${now}'),
-        ('cat-2', 'Điện thoại tầm trung', 'dien-thoai-tam-trung', 'Cấu hình tốt, giá hợp lý', true, '${now}', '${now}'),
-        ('cat-3', 'Điện thoại giá rẻ', 'dien-thoai-gia-re', 'Đáp ứng nhu cầu cơ bản', true, '${now}', '${now}')
+        ('cat-1', 'Điện thoại flagship', 'dien-thoai-flagship', true, '${now}', '${now}'),
+        ('cat-2', 'Điện thoại tầm trung', 'dien-thoai-tam-trung', true, '${now}', '${now}'),
+        ('cat-3', 'Điện thoại giá rẻ', 'dien-thoai-gia-re', true, '${now}', '${now}')
       ON CONFLICT ("id") DO NOTHING;
     `);
 
     // Tạo thương hiệu mẫu
     await client.query(`
-      INSERT INTO "brands" ("id", "name", "slug", "description", "status", "created_at", "updated_at")
+      INSERT INTO "brands" ("id", "name", "slug", "status", "created_at", "updated_at")
       VALUES 
-        ('brand-apple', 'Apple', 'apple', 'Thương hiệu Apple', true, '${now}', '${now}'),
-        ('brand-samsung', 'Samsung', 'samsung', 'Thương hiệu Samsung', true, '${now}', '${now}'),
-        ('brand-xiaomi', 'Xiaomi', 'xiaomi', 'Thương hiệu Xiaomi', true, '${now}', '${now}'),
-        ('brand-oppo', 'OPPO', 'oppo', 'Thương hiệu OPPO', true, '${now}', '${now}')
+        ('brand-apple', 'Apple', 'apple', true, '${now}', '${now}'),
+        ('brand-samsung', 'Samsung', 'samsung', true, '${now}', '${now}'),
+        ('brand-xiaomi', 'Xiaomi', 'xiaomi', true, '${now}', '${now}'),
+        ('brand-oppo', 'OPPO', 'oppo', true, '${now}', '${now}')
       ON CONFLICT ("id") DO NOTHING;
     `);
 
@@ -102,7 +102,7 @@ export async function GET() {
   }
 }
 
-// 2. XỬ LÝ KHI THÊM 1 SẢN PHẨM TỪ FORM ADMIN
+// 2. XỬ LÝ FORM THÊM SẢN PHẨM MỚI
 export async function POST(request: Request) {
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
