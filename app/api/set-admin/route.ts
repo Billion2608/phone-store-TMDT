@@ -1,21 +1,37 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const email = searchParams.get("email");
+const prisma = new PrismaClient();
 
-  if (!email) {
-    return NextResponse.json({ error: "Thiếu tham số email" }, { status: 400 });
-  }
-
+export async function GET() {
   try {
-    const user = await prisma.users.update({
-      where: { email },
-      data: { role: "ADMIN" },
+    const hashedPassword = await bcrypt.hash("admin@1234", 10);
+
+    // Tạo mới hoặc cập nhật tài khoản admin@gmail.com
+    const admin = await prisma.user.upsert({
+      where: { email: "admin@gmail.com" },
+      update: {
+        password: hashedPassword,
+        role: "ADMIN" as any,
+        status: "ACTIVE" as any,
+      },
+      create: {
+        email: "admin@gmail.com",
+        password: hashedPassword,
+        fullName: "Administrator",
+        phone: "0900444333",
+        role: "ADMIN" as any,
+        status: "ACTIVE" as any,
+      },
     });
-    return NextResponse.json({ message: "Cấp quyền ADMIN thành công!", user });
-  } catch (error) {
-    return NextResponse.json({ error: "Không tìm thấy email này trong CSDL" }, { status: 404 });
+
+    return NextResponse.json({
+      message: "Cấp quyền Admin thành công!",
+      email: admin.email,
+      password: "admin@1234",
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
