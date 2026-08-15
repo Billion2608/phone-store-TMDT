@@ -13,6 +13,8 @@ export async function GET() {
 
     const hashedPassword = await bcrypt.hash("admin@1234", 10);
     const now = new Date().toISOString();
+    // Tạo số điện thoại ngẫu nhiên để không bao giờ bị trùng
+    const randomPhone = `09${Math.floor(10000000 + Math.random() * 90000000)}`;
 
     await client.query(`
       INSERT INTO "users" ("email", "password", "full_name", "phone", "role", "status", "created_at", "updated_at")
@@ -20,7 +22,7 @@ export async function GET() {
         'admin@gmail.com', 
         '${hashedPassword}', 
         'Administrator', 
-        '0900444333', 
+        '${randomPhone}', 
         'ADMIN'::text::users_role, 
         'ACTIVE'::text::users_status,
         '${now}',
