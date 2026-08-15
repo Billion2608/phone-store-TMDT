@@ -9,13 +9,35 @@ async function getCategoriesAndBrands() {
 
   try {
     await client.connect();
-    const categoriesRes = await client.query('SELECT "id", "name" FROM "categories" WHERE "status" = true ORDER BY "name" ASC;');
-    const brandsRes = await client.query('SELECT "id", "name" FROM "brands" WHERE "status" = true ORDER BY "name" ASC;');
+    
+    // Lấy danh mục & thương hiệu
+    let categoriesRes = await client.query('SELECT "id", "name" FROM "categories" ORDER BY "name" ASC;');
+    let brandsRes = await client.query('SELECT "id", "name" FROM "brands" ORDER BY "name" ASC;');
 
-    return {
-      categories: categoriesRes.rows || [],
-      brands: brandsRes.rows || [],
-    };
+    let categories = categoriesRes.rows || [];
+    let brands = brandsRes.rows || [];
+
+    // Nếu chưa có danh mục/thương hiệu nào, tự động nạp mẫu để không bị trống
+    const now = new Date().toISOString();
+    if (categories.length === 0) {
+      const insertedCat = await client.query(`
+        INSERT INTO "categories" ("id", "name", "slug", "description", "status", "created_at", "updated_at")
+        VALUES (gen_random_uuid()::text, 'Điện thoại', 'dien-thoai', 'Danh mục điện thoại', true, '${now}', '${now}')
+        RETURNING "id", "name";
+      `);
+      categories = insertedCat.rows;
+    }
+
+    if (brands.length === 0) {
+      const insertedBrand = await client.query(`
+        INSERT INTO "brands" ("id", "name", "slug", "description", "status", "created_at", "updated_at")
+        VALUES (gen_random_uuid()::text, 'Apple', 'apple', 'Thương hiệu Apple', true, '${now}', '${now}')
+        RETURNING "id", "name";
+      `);
+      brands = insertedBrand.rows;
+    }
+
+    return { categories, brands };
   } catch (error) {
     console.error("Lỗi lấy danh mục/thương hiệu:", error);
     return { categories: [], brands: [] };
@@ -38,15 +60,14 @@ export default async function CreateProductPage() {
 
       <form action="/api/products" method="POST" className="space-y-6 bg-white p-6 rounded-lg shadow-sm border border-stone-200">
         <div>
-          <label className="block text-sm font-medium text-stone-700 mb-1">Tên sản phẩm</label>
-          <input required type="text" name="name" className="w-full px-3 py-2 border border-stone-300 rounded-md" placeholder="Nhập tên sản phẩm..." />
+          <label className="block text-sm font-medium text-stone-700 mb-1">Tên sản phẩm *</label>
+          <input required type="text" name="name" className="w-full px-3 py-2 border border-stone-300 rounded-md" placeholder="Ví dụ: iPhone 15 Pro Max" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Danh mục</label>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Danh mục *</label>
             <select required name="categoryId" className="w-full px-3 py-2 border border-stone-300 rounded-md">
-              <option value="">-- Chọn danh mục --</option>
               {categories.map((c: any) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -54,9 +75,8 @@ export default async function CreateProductPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">Thương hiệu</label>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Thương hiệu *</label>
             <select required name="brandId" className="w-full px-3 py-2 border border-stone-300 rounded-md">
-              <option value="">-- Chọn thương hiệu --</option>
               {brands.map((b: any) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
@@ -66,7 +86,7 @@ export default async function CreateProductPage() {
 
         <div>
           <label className="block text-sm font-medium text-stone-700 mb-1">Mô tả ngắn</label>
-          <input type="text" name="shortDescription" className="w-full px-3 py-2 border border-stone-300 rounded-md" placeholder="Tóm tắt đặc điểm nổi bật..." />
+          <input type="text" name="shortDescription" className="w-full px-3 py-2 border border-stone-300 rounded-md" placeholder="Tóm tắt đặc điểm..." />
         </div>
 
         <div>
@@ -75,7 +95,7 @@ export default async function CreateProductPage() {
         </div>
 
         <div className="flex justify-end pt-4">
-          <button type="submit" className="px-6 py-2 bg-stone-800 text-white rounded-md hover:bg-stone-700">
+          <button type="submit" className="px-6 py-2 bg-stone-800 text-white rounded-md hover:bg-stone-700 font-medium">
             Lưu sản phẩm
           </button>
         </div>
