@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@prisma/client";
 import {
   FREE_SHIPPING_THRESHOLD,
   STANDARD_SHIPPING_FEE,
@@ -26,15 +26,15 @@ function calculateDiscount(
   coupon: {
     discount_type: "PERCENT" | "FIXED";
     discount_value: Prisma.Decimal;
-    max_discount: Prisma.Decimal | null;
+    max_discount_amount: Prisma.Decimal | null;
   },
 ) {
   let discount =
     coupon.discount_type === "PERCENT"
       ? subtotal.mul(coupon.discount_value).div(100)
       : coupon.discount_value;
-  if (coupon.max_discount && discount.gt(coupon.max_discount))
-    discount = coupon.max_discount;
+  if (coupon.max_discount_amount && discount.gt(coupon.max_discount_amount))
+    discount = coupon.max_discount_amount;
   if (discount.gt(subtotal)) discount = subtotal;
   return discount.toDecimalPlaces(0);
 }
@@ -130,9 +130,9 @@ export async function checkout(userId: string, input: CheckoutInput) {
           coupon.used_count >= coupon.usage_limit
         )
           throw new BusinessError("Mã giảm giá đã hết lượt sử dụng.", 422);
-        if (subtotal.lt(coupon.min_order_value))
+        if (coupon.min_order_amount && subtotal.lt(coupon.min_order_amount))
           throw new BusinessError(
-            `Đơn hàng chưa đạt giá trị tối thiểu ${Number(coupon.min_order_value).toLocaleString("vi-VN")}đ.`,
+            `Đơn hàng chưa đạt giá trị tối thiểu ${Number(coupon.min_order_amount).toLocaleString("vi-VN")}đ.`,
             422,
           );
         discount = calculateDiscount(subtotal, coupon);
@@ -173,16 +173,11 @@ export async function checkout(userId: string, input: CheckoutInput) {
 
       await tx.order_items.createMany({
         data: snapshots.map(
-          ({ variant, quantity, price, total, variantName }) => ({
+          ({ variant, quantity, price }) => ({
             order_id: order.id,
             variant_id: variant.id,
-            product_name: variant.products.name,
-            variant_name: variantName,
-            sku: variant.sku,
-            product_image: variant.image ?? variant.products.thumbnail,
             price,
             quantity,
-            total_price: total,
           }),
         ),
       });
@@ -256,11 +251,8 @@ export async function checkout(userId: string, input: CheckoutInput) {
           data: {
             user_id: userIdValue,
             receiver_name: input.receiverName,
-            receiver_phone: input.phone,
-            province: input.province,
-            district: input.district,
-            ward: input.ward,
-            address_line: input.address,
+            phone: input.phone,
+            address: shippingAddress,
             is_default: true,
           },
         });
@@ -302,11 +294,11 @@ export async function getDefaultAddress(userId: string) {
   return address
     ? {
         receiverName: address.receiver_name,
-        phone: address.receiver_phone,
-        province: address.province ?? "",
-        district: address.district ?? "",
-        ward: address.ward ?? "",
-        address: address.address_line,
+        phone: address.phone,
+        province: "",
+        district: "",
+        ward: "",
+        address: address.address,
       }
     : null;
 }
@@ -522,7 +514,7 @@ export async function getOrderDetail(
       order_items: {
         include: {
           product_variants: {
-            include: { products: { select: { id: true, slug: true } } },
+            include: { products: { select: { id: true, name: true, slug: true, thumbnail: true } }, variant_attribute_values: { include: { attribute_values: { include: { attributes: true } } } } },
           },
           reviews: { where: { user_id: BigInt(userId) }, select: { id: true } },
         },
@@ -554,21 +546,31 @@ export async function getOrderDetail(
     shippingFee: Number(order.shipping_fee),
     note: order.note,
     cancelledReason: order.cancelled_reason,
-    items: order.order_items.map((item) => ({
-      id: item.id.toString(),
-      variantId: item.variant_id.toString(),
-      productId: item.product_variants.products.id.toString(),
-      productName: item.product_name,
-      productSlug: item.product_variants.products.slug,
-      variantName: item.variant_name,
-      sku: item.sku,
-      image: item.product_image,
-      price: Number(item.price),
-      quantity: item.quantity,
-      totalPrice: Number(item.total_price),
-      canReview: order.status === "COMPLETED" && item.reviews.length === 0,
-      reviewId: item.reviews[0]?.id.toString() ?? null,
-    })),
+    items: order.order_items.map((item) => {
+      const variant = item.product_variants;
+      const variantName = variant.variant_attribute_values
+        .map(
+          (entry) =>
+            `${entry.attribute_values.attributes.name}: ${entry.attribute_values.value}`,
+        )
+        .join(" · ") || null;
+
+      return {
+        id: item.id.toString(),
+        variantId: item.variant_id.toString(),
+        productId: variant.products.id.toString(),
+        productName: variant.products.name,
+        productSlug: variant.products.slug,
+        variantName,
+        sku: variant.sku,
+        image: variant.image ?? variant.products.thumbnail,
+        price: Number(item.price),
+        quantity: item.quantity,
+        totalPrice: Number(item.price) * item.quantity,
+        canReview: order.status === "COMPLETED" && item.reviews.length === 0,
+        reviewId: item.reviews[0]?.id.toString() ?? null,
+      };
+    }),
     payment: payment
       ? {
           method: payment.payment_method as PaymentMethod,
