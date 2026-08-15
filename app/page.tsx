@@ -1,69 +1,137 @@
-import Image from "next/image";
-
-export default function Home() {
+import { Headphones, Smartphone, Tag } from "lucide-react";
+import Link from "next/link";
+import { FeaturedCategories } from "@/components/home/FeaturedCategories";
+import { HomeHero } from "@/components/home/HomeHero";
+import { ProductSection } from "@/components/home/ProductSection";
+import { ServiceStrip } from "@/components/home/ServiceStrip";
+import { getActiveBanners } from "@/services/banner.service";
+import {
+  getActiveBrands,
+  getFeaturedProducts,
+  getHomeCategories,
+  getProducts,
+  getProductsByCategoryRoot,
+} from "@/services/product.service";
+export const dynamic = "force-dynamic";
+export default async function Home() {
+  const [
+    featured,
+    phones,
+    apple,
+    accessories,
+    promotions,
+    brands,
+    categories,
+    banners,
+  ] = await Promise.all([
+    getFeaturedProducts(10),
+    getProductsByCategoryRoot("dien-thoai", 10),
+    getProducts({ brand: "apple", sort: "best-selling", limit: 10 }),
+    getProductsByCategoryRoot("phu-kien", 10),
+    getProducts({ sort: "price-asc", limit: 10 }),
+    getActiveBrands(),
+    getHomeCategories(),
+    getActiveBanners(),
+  ]);
+  const brandTabs = brands
+    .slice(0, 6)
+    .map((brand) => ({
+      label: brand.name,
+      href: `/products?brand=${brand.slug}`,
+    }));
+  const fallbackSlides = [...featured, ...phones]
+    .filter(
+      (product, index, list) =>
+        list.findIndex((item) => item.id === product.id) === index,
+    )
+    .slice(0, 3)
+    .map((product) => ({
+      id: product.id,
+      title: product.name,
+      subtitle: "Sản phẩm chính hãng, giá tốt và giao hàng toàn quốc.",
+      image: product.thumbnail,
+      href: `/products/${product.slug}`,
+      buttonText: "Xem sản phẩm",
+    }));
+  const slides = banners.length
+    ? banners.map((banner) => ({ ...banner, cover: true }))
+    : fallbackSlides;
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="bg-[#fdfbf7] pb-8">
+      <HomeHero slides={slides} />
+      <div className="mt-3">
+        <ServiceStrip />
+      </div>
+      <FeaturedCategories categories={categories} />
+      <section className="retail-section">
+        <div className="border-y border-[#e7dfd5] py-4">
+          <div className="mb-3 flex items-end justify-between">
+            <h2 className="text-xl font-bold text-[#2c221e]">Thương hiệu</h2>
+            <Link
+              className="text-xs font-bold text-[#8c6d53] hover:text-[#6f523e]"
+              href="/products"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              Xem tất cả sản phẩm
+            </Link>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {brands.map((brand) => (
+              <Link
+                className="min-w-28 flex-1 rounded-md border border-[#e7dfd5] bg-white px-4 py-2.5 text-center text-sm font-bold text-[#4a3a32] transition-colors hover:border-[#cdb9a7] hover:bg-[#f5f2eb]"
+                href={`/products?brand=${brand.slug}`}
+                key={brand.slug}
+              >
+                {brand.name}
+              </Link>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </section>
+      <ProductSection
+        bestSellerTitle="iPhone bán chạy"
+        featured
+        href="/products?brand=apple"
+        icon={<Smartphone size={18} />}
+        products={apple.items}
+        tabs={[
+          { label: "Hàng mới", href: "/products?brand=apple&sort=newest" },
+          {
+            label: "Bán chạy",
+            href: "/products?brand=apple&sort=best-selling",
+          },
+        ]}
+        title="Apple - iPhone"
+      />
+      <ProductSection
+        href="/products"
+        icon={<Smartphone size={18} />}
+        products={featured}
+        tabs={brandTabs}
+        title="Điện thoại nổi bật"
+      />
+      <ProductSection
+        href="/products?category=phu-kien"
+        icon={<Headphones size={18} />}
+        products={accessories}
+        tabs={[
+          { label: "Tai nghe", href: "/products?search=tai+nghe" },
+          { label: "Sạc", href: "/products?search=sạc" },
+          { label: "Pin dự phòng", href: "/products?search=pin+dự+phòng" },
+        ]}
+        title="Phụ kiện"
+      />
+      <ProductSection
+        href="/products?sort=best-selling"
+        icon={<Tag size={18} />}
+        products={phones}
+        title="Sản phẩm bán chạy"
+      />
+      <ProductSection
+        href="/products?sort=price-asc"
+        icon={<Tag size={18} />}
+        products={promotions.items}
+        title="Khuyến mãi"
+      />
     </div>
   );
 }
