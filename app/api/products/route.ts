@@ -1,42 +1,63 @@
-import { z } from "zod";
+import { NextResponse } from "next/server";
+import { Client } from "pg";
 
-import { errorResponse, successResponse } from "@/lib/api-response";
-import { getProducts } from "@/services/product.service";
+export async function POST(request: Request) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+  });
 
-const querySchema = z
-  .object({
-    search: z.string().trim().max(255).optional(),
-    category: z.string().trim().max(150).optional(),
-    brand: z.string().trim().max(120).optional(),
-    minPrice: z.coerce.number().min(0).optional(),
-    maxPrice: z.coerce.number().min(0).optional(),
-    sort: z
-      .enum(["newest", "price-asc", "price-desc", "best-selling"])
-      .default("newest"),
-    page: z.coerce.number().int().positive().default(1),
-    limit: z.coerce.number().int().min(1).max(48).default(12),
-  })
-  .refine(
-    (data) =>
-      data.minPrice === undefined ||
-      data.maxPrice === undefined ||
-      data.minPrice <= data.maxPrice,
-    { message: "Khoảng giá không hợp lệ." },
-  );
-
-export async function GET(request: Request) {
-  const params = Object.fromEntries(
-    new URL(request.url).searchParams.entries(),
-  );
-  const parsed = querySchema.safeParse(params);
-  if (!parsed.success)
-    return errorResponse(
-      parsed.error.issues[0]?.message ?? "Tham số không hợp lệ.",
-      422,
-    );
   try {
-    return successResponse(await getProducts(parsed.data));
-  } catch {
-    return errorResponse("Không thể tải danh sách sản phẩm.", 500);
+    await client.connect();
+
+    let name = "", categoryId = "", brandId = "", shortDescription = "", description = "";
+
+    const contentType = request.headers.get("content-type") || "";
+    if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      name = formData.get("name")?.toString() || "";
+      categoryId = formData.get("categoryId")?.toString() || "";
+      brandId = formData.get("brandId")?.toString() || "";
+      shortDescription = formData.get("shortDescription")?.toString() || "";
+      description = formData.get("description")?.toString() || "";
+    } else {
+      const body = await request.json();
+      name = body.name || "";
+      categoryId = body.categoryId || "";
+      brandId = body.brandId || "";
+      shortDescription = body.shortDescription || "";
+      description = body.description || "";
+    }
+
+    if (!name || !categoryId || !brandId) {
+      return NextResponse.json({ error: "Thiếu tên sản phẩm, danh mục hoặc thương hiệu" }, { status: 400 });
+    }
+
+    // Tạo slug từ tên sản phẩm
+    const slug = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "-") + "-" + Date.now();
+    const now = new Date().toISOString();
+
+    await client.query(`
+      INSERT INTO "products" ("id", "name", "slug", "category_id", "brand_id", "short_description", "description", "status", "created_at", "updated_at")
+      VALUES (
+        gen_random_uuid()::text,
+        '${name.replace(/'/g, "''")}',
+        '${slug}',
+        '${categoryId}',
+        '${brandId}',
+        '${shortDescription.replace(/'/g, "''")}',
+        '${description.replace(/'/g, "''")}',
+        'ACTIVE'::text::products_status,
+        '${now}',
+        '${now}'
+      );
+    `);
+
+    // Chuyển hướng về trang danh sách sản phẩm sau khi thêm thành công
+    return NextResponse.redirect(new URL("/admin/products", request.url), 303);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  } finally {
+    await client.end();
   }
 }
