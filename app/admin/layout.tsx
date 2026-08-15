@@ -5,24 +5,27 @@ import Link from "next/link";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => {
     try {
-      // 1. Gọi API xóa Cookie xác thực phía Server
-      await fetch("/api/auth/logout", { method: "POST" });
+      // 1. Gọi API đăng xuất custom của bạn
+      await fetch("/api/auth/logout", { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
     } catch (error) {
-      console.error("Lỗi gọi API đăng xuất:", error);
+      console.error("Lỗi đăng xuất API:", error);
     } finally {
-      // 2. Xóa toàn bộ dữ liệu Client (LocalStorage & SessionStorage)
+      // 2. Xóa toàn bộ LocalStorage và SessionStorage
       localStorage.clear();
       sessionStorage.clear();
 
-      // 3. Xóa thủ công toàn bộ Cookie ở phía Client
+      // 3. Xóa Cookie client-side dự phòng
       document.cookie.split(";").forEach((c) => {
         document.cookie = c
           .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+          .replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/");
       });
 
-      // 4. Ép trình duyệt tải lại hoàn toàn và điều hướng về trang Login
-      window.location.href = "/login";
+      // 4. Chuyển hướng cứng về trang /login và ép reload toàn trang
+      window.location.replace("/login");
     }
   };
 
