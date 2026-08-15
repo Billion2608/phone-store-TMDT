@@ -12,7 +12,24 @@ import {
   getProducts,
   getProductsByCategoryRoot,
 } from "@/services/product.service";
+
 export const dynamic = "force-dynamic";
+
+interface BrandItem {
+  name: string;
+  slug: string;
+  logo?: string | null;
+}
+
+interface BannerItem {
+  id: string | number;
+  title?: string;
+  subtitle?: string;
+  image: string;
+  href?: string;
+  buttonText?: string;
+}
+
 export default async function Home() {
   const [
     featured,
@@ -20,9 +37,9 @@ export default async function Home() {
     apple,
     accessories,
     promotions,
-    brands,
+    brandsData,
     categories,
-    banners,
+    bannersData,
   ] = await Promise.all([
     getFeaturedProducts(10),
     getProductsByCategoryRoot("dien-thoai", 10),
@@ -33,29 +50,36 @@ export default async function Home() {
     getHomeCategories(),
     getActiveBanners(),
   ]);
-  const brandTabs = brands
-    .slice(0, 6)
-    .map((brand) => ({
-      label: brand.name,
-      href: `/products?brand=${brand.slug}`,
-    }));
+
+  const brands: BrandItem[] = (brandsData as BrandItem[]) || [];
+  const banners: BannerItem[] = (bannersData as BannerItem[]) || [];
+
+  const brandTabs = brands.slice(0, 6).map((brand: BrandItem) => ({
+    label: brand.name,
+    href: `/products?brand=${brand.slug}`,
+  }));
+
   const fallbackSlides = [...featured, ...phones]
     .filter(
       (product, index, list) =>
-        list.findIndex((item) => item.id === product.id) === index,
+        list.findIndex((item) => item.id === product.id) === index
     )
     .slice(0, 3)
     .map((product) => ({
       id: product.id,
       title: product.name,
       subtitle: "Sản phẩm chính hãng, giá tốt và giao hàng toàn quốc.",
-      image: product.thumbnail,
+      image: product.thumbnail || "",
       href: `/products/${product.slug}`,
       buttonText: "Xem sản phẩm",
     }));
-  const slides = banners.length
-    ? banners.map((banner) => ({ ...banner, cover: true }))
-    : fallbackSlides;
+
+  const slides = (
+  banners.length
+    ? banners.map((banner: BannerItem) => ({ ...banner, cover: true }))
+    : fallbackSlides
+) as any;
+
   return (
     <div className="bg-[#fdfbf7] pb-8">
       <HomeHero slides={slides} />
@@ -75,7 +99,7 @@ export default async function Home() {
             </Link>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {brands.map((brand) => (
+            {brands.map((brand: BrandItem) => (
               <Link
                 className="min-w-28 flex-1 rounded-md border border-[#e7dfd5] bg-white px-4 py-2.5 text-center text-sm font-bold text-[#4a3a32] transition-colors hover:border-[#cdb9a7] hover:bg-[#f5f2eb]"
                 href={`/products?brand=${brand.slug}`}
