@@ -11,17 +11,26 @@ export async function GET() {
   try {
     await client.connect();
 
-    // Mã hóa mật khẩu admin@1234
     const hashedPassword = await bcrypt.hash("admin@1234", 10);
+    const now = new Date().toISOString();
 
-    // Xóa tài khoản cũ nếu có và thêm lại tài khoản Admin mới chuẩn xác
     await client.query(`
-      INSERT INTO "users" ("email", "password", "full_name", "phone", "role", "status")
-      VALUES ('admin@gmail.com', '${hashedPassword}', 'Administrator', '0900444333', 'ADMIN'::text::users_role, 'ACTIVE'::text::users_status)
+      INSERT INTO "users" ("email", "password", "full_name", "phone", "role", "status", "created_at", "updated_at")
+      VALUES (
+        'admin@gmail.com', 
+        '${hashedPassword}', 
+        'Administrator', 
+        '0900444333', 
+        'ADMIN'::text::users_role, 
+        'ACTIVE'::text::users_status,
+        '${now}',
+        '${now}'
+      )
       ON CONFLICT ("email") DO UPDATE SET 
         "password" = '${hashedPassword}',
         "role" = 'ADMIN'::text::users_role,
-        "status" = 'ACTIVE'::text::users_status;
+        "status" = 'ACTIVE'::text::users_status,
+        "updated_at" = '${now}';
     `);
 
     return NextResponse.json({
