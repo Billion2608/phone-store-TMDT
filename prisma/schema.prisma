@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model users {
@@ -60,6 +61,7 @@ model categories {
   name       String     @db.VarChar(150)
   slug       String     @unique @db.VarChar(150)
   image      String?    @db.VarChar(500)
+  status     Boolean    @default(true)
   created_at DateTime   @default(now())
   updated_at DateTime   @updatedAt
   products   products[]
@@ -70,6 +72,7 @@ model brands {
   name       String     @db.VarChar(150)
   slug       String     @unique @db.VarChar(150)
   logo       String?    @db.VarChar(500)
+  status     Boolean    @default(true)
   created_at DateTime   @default(now())
   updated_at DateTime   @updatedAt
   products   products[]
@@ -230,33 +233,33 @@ model coupon_usages {
 }
 
 model orders {
-  id                   BigInt                 @id @default(autoincrement())
-  order_code           String                 @unique(map: "order_code") @db.VarChar(50)
+  id                   BigInt                @id @default(autoincrement())
+  order_code           String                @unique(map: "order_code") @db.VarChar(50)
   user_id              BigInt
   coupon_id            BigInt?
-  receiver_name        String                 @db.VarChar(150)
-  receiver_phone       String                 @db.VarChar(20)
-  shipping_address     String                 @db.VarChar(500)
-  subtotal             Decimal                @db.Decimal(15, 2)
-  discount_amount      Decimal                @default(0.00) @db.Decimal(15, 2)
-  shipping_fee         Decimal                @default(0.00) @db.Decimal(15, 2)
-  total_amount         Decimal                @db.Decimal(15, 2)
-  payment_method       orders_payment_method  @default(COD)
-  payment_status       orders_payment_status  @default(UNPAID)
-  status               orders_status          @default(PENDING)
-  note                 String?                @db.Text
-  cancelled_reason     String?                @db.Text
+  receiver_name        String                @db.VarChar(150)
+  receiver_phone       String                @db.VarChar(20)
+  shipping_address     String                @db.VarChar(500)
+  subtotal             Decimal               @db.Decimal(15, 2)
+  discount_amount      Decimal               @default(0.00) @db.Decimal(15, 2)
+  shipping_fee         Decimal               @default(0.00) @db.Decimal(15, 2)
+  total_amount         Decimal               @db.Decimal(15, 2)
+  payment_method       payment_method        @default(COD)
+  payment_status       payment_status        @default(UNPAID)
+  status               orders_status         @default(PENDING)
+  note                 String?               @db.Text
+  cancelled_reason     String?               @db.Text
   confirmed_at         DateTime?
   shipping_at          DateTime?
   completed_at         DateTime?
   cancelled_at         DateTime?
-  created_at           DateTime               @default(now())
-  updated_at           DateTime               @updatedAt
+  created_at           DateTime              @default(now())
+  updated_at           DateTime              @updatedAt
   coupon_usages        coupon_usages[]
   order_items          order_items[]
   order_status_history order_status_history[]
-  coupons              coupons?               @relation(fields: [coupon_id], references: [id], onUpdate: NoAction)
-  users                users                  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  coupons              coupons?              @relation(fields: [coupon_id], references: [id], onUpdate: NoAction)
+  users                users                 @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   payments             payments[]
 
   @@index([coupon_id], map: "fk_orders_coupon")
@@ -296,36 +299,36 @@ model order_status_history {
 }
 
 model payments {
-  id               BigInt                  @id @default(autoincrement())
+  id               BigInt         @id @default(autoincrement())
   order_id         BigInt
-  payment_method   payments_payment_method
-  transaction_code String?                 @db.VarChar(255)
-  amount           Decimal                 @db.Decimal(15, 2)
-  status           payments_status         @default(PENDING)
-  payment_response String?                 @db.Text
+  payment_method   payment_method
+  transaction_code String?        @db.VarChar(255)
+  amount           Decimal        @db.Decimal(15, 2)
+  status           payment_status @default(PENDING)
+  payment_response String?        @db.Text
   paid_at          DateTime?
-  created_at       DateTime                @default(now())
-  updated_at       DateTime                @updatedAt
-  orders           orders                  @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  created_at       DateTime       @default(now())
+  updated_at       DateTime       @updatedAt
+  orders           orders         @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([order_id])
 }
 
 model reviews {
-  id            BigInt          @id @default(autoincrement())
+  id            BigInt         @id @default(autoincrement())
   user_id       BigInt
   product_id    BigInt
   order_item_id BigInt?
   rating        Int
-  title         String?         @db.VarChar(255)
-  comment       String?         @db.Text
-  status        reviews_status  @default(APPROVED)
-  created_at    DateTime        @default(now())
-  updated_at    DateTime        @updatedAt
+  title         String?        @db.VarChar(255)
+  comment       String?        @db.Text
+  status        reviews_status @default(APPROVED)
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
   review_images review_images[]
-  order_items   order_items?    @relation(fields: [order_item_id], references: [id], onUpdate: NoAction)
-  products      products        @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users         users           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  order_items   order_items?   @relation(fields: [order_item_id], references: [id], onUpdate: NoAction)
+  products      products       @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users         users          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([order_item_id])
   @@index([product_id], map: "idx_reviews_product")
@@ -382,23 +385,25 @@ enum ai_chat_messages_role {
   SYSTEM
 }
 
-enum payments_payment_method {
+enum payment_method {
   COD
   BANK_TRANSFER
   VNPAY
   MOMO
 }
 
+enum payment_status {
+  UNPAID
+  PENDING
+  SUCCESS
+  PAID
+  FAILED
+  REFUNDED
+}
+
 enum coupons_discount_type {
   PERCENT
   FIXED
-}
-
-enum payments_status {
-  PENDING
-  SUCCESS
-  FAILED
-  REFUNDED
 }
 
 enum users_role {
@@ -422,20 +427,6 @@ enum products_status {
   DRAFT
   ACTIVE
   INACTIVE
-}
-
-enum orders_payment_method {
-  COD
-  BANK_TRANSFER
-  VNPAY
-  MOMO
-}
-
-enum orders_payment_status {
-  UNPAID
-  PAID
-  REFUNDED
-  FAILED
 }
 
 enum orders_status {
