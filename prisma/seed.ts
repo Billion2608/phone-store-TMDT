@@ -3,16 +3,25 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Bắt đầu nạp dữ liệu bằng Raw SQL (Bỏ qua validation)...");
+  console.log("🌱 Bắt đầu nạp dữ liệu chuẩn hoá giá trị Enum...");
 
-  // 1. Nạp Users
+  // 1. Nạp Users (Chuyển value enum về chữ thường / đúng chuẩn DB)
   await prisma.$executeRawUnsafe(`
     INSERT INTO "users" (id, email, password, full_name, phone, role, status)
     VALUES 
-      (1, 'admin@phonestore.com', '$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v', 'Administrator', '0900444333', 'ADMIN'::users_role, 'ACTIVE'::users_status),
-      (2, 'user@phonestore.com', '$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v', 'Test User', '0999888777', 'USER'::users_role, 'ACTIVE'::users_status)
+      (1, 'admin@phonestore.com', '$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v', 'Administrator', '0900444333', 'admin', 'active'),
+      (2, 'user@phonestore.com', '$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v', 'Test User', '0999888777', 'user', 'active')
     ON CONFLICT (id) DO NOTHING;
-  `);
+  `).catch(async () => {
+    // Fallback nếu enum trong CSDL của bạn viết hoa
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "users" (id, email, password, full_name, phone, role, status)
+      VALUES 
+        (1, 'admin@phonestore.com', '$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v', 'Administrator', '0900444333', 'ADMIN', 'ACTIVE'),
+        (2, 'user@phonestore.com', '$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v', 'Test User', '0999888777', 'USER', 'ACTIVE')
+      ON CONFLICT (id) DO NOTHING;
+    `);
+  });
 
   // 2. Nạp Categories & Brands
   await prisma.$executeRawUnsafe(`
@@ -30,9 +39,15 @@ async function main() {
   // 3. Nạp Products & Product Variants
   await prisma.$executeRawUnsafe(`
     INSERT INTO "products" (id, category_id, brand_id, name, slug, short_description, description, status)
-    VALUES (1, 1, 1, 'Iphone', 'iphone', 'Điện thoại Iphone chính hãng', 'Mô tả chi tiết sản phẩm Iphone', 'ACTIVE'::products_status)
+    VALUES (1, 1, 1, 'Iphone', 'iphone', 'Điện thoại Iphone chính hãng', 'Mô tả chi tiết sản phẩm Iphone', 'active')
     ON CONFLICT (id) DO NOTHING;
-  `);
+  `).catch(async () => {
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "products" (id, category_id, brand_id, name, slug, short_description, description, status)
+      VALUES (1, 1, 1, 'Iphone', 'iphone', 'Điện thoại Iphone chính hãng', 'Mô tả chi tiết sản phẩm Iphone', 'ACTIVE')
+      ON CONFLICT (id) DO NOTHING;
+    `);
+  });
 
   await prisma.$executeRawUnsafe(`
     INSERT INTO "product_variants" (id, product_id, sku, price, sale_price, stock_quantity, image, status)
@@ -44,11 +59,11 @@ async function main() {
   await prisma.$executeRawUnsafe(`
     INSERT INTO "orders" (id, order_code, user_id, receiver_name, receiver_phone, shipping_address, subtotal, shipping_fee, total_amount, payment_method, payment_status, status)
     VALUES 
-      (1, 'PS20260804-D07CC57F', 1, 'Administrator', '0900444333', '32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long', 1300000.00, 30000.00, 1330000.00, 'COD'::orders_payment_method, 'UNPAID'::orders_payment_status, 'PENDING'::orders_status),
-      (2, 'PS20260804-2DA36E5E', 1, 'Administrator', '0900444333', '32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long', 1300000.00, 30000.00, 1330000.00, 'COD'::orders_payment_method, 'UNPAID'::orders_payment_status, 'PENDING'::orders_status),
-      (3, 'PS20260804-60A270F0', 2, 'Test', '0999888777', '54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội', 1300000.00, 30000.00, 1330000.00, 'COD'::orders_payment_method, 'UNPAID'::orders_payment_status, 'PENDING'::orders_status),
-      (4, 'PS20260804-CCB542D6', 2, 'Test', '0999888777', '54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội', 1300000.00, 30000.00, 1330000.00, 'VNPAY'::orders_payment_method, 'UNPAID'::orders_payment_status, 'PENDING'::orders_status),
-      (5, 'PS20260804-B7AE796D', 2, 'Test', '0999888777', '54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội', 1300000.00, 30000.00, 1330000.00, 'COD'::orders_payment_method, 'UNPAID'::orders_payment_status, 'PENDING'::orders_status)
+      (1, 'PS20260804-D07CC57F', 1, 'Administrator', '0900444333', '32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long', 1300000.00, 30000.00, 1330000.00, 'COD', 'UNPAID', 'PENDING'),
+      (2, 'PS20260804-2DA36E5E', 1, 'Administrator', '0900444333', '32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long', 1300000.00, 30000.00, 1330000.00, 'COD', 'UNPAID', 'PENDING'),
+      (3, 'PS20260804-60A270F0', 2, 'Test', '0999888777', '54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội', 1300000.00, 30000.00, 1330000.00, 'COD', 'UNPAID', 'PENDING'),
+      (4, 'PS20260804-CCB542D6', 2, 'Test', '0999888777', '54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội', 1300000.00, 30000.00, 1330000.00, 'VNPAY', 'UNPAID', 'PENDING'),
+      (5, 'PS20260804-B7AE796D', 2, 'Test', '0999888777', '54c, Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội', 1300000.00, 30000.00, 1330000.00, 'COD', 'UNPAID', 'PENDING')
     ON CONFLICT (id) DO NOTHING;
   `);
 
@@ -66,15 +81,15 @@ async function main() {
   await prisma.$executeRawUnsafe(`
     INSERT INTO "payments" (id, order_id, payment_method, amount, status)
     VALUES 
-      (1, 1, 'COD'::payments_payment_method, 1330000.00, 'PENDING'::payments_status),
-      (2, 2, 'COD'::payments_payment_method, 1330000.00, 'PENDING'::payments_status),
-      (3, 3, 'COD'::payments_payment_method, 1330000.00, 'PENDING'::payments_status),
-      (4, 4, 'VNPAY'::payments_payment_method, 1330000.00, 'PENDING'::payments_status),
-      (5, 5, 'COD'::payments_payment_method, 1330000.00, 'PENDING'::payments_status)
+      (1, 1, 'COD', 1330000.00, 'PENDING'),
+      (2, 2, 'COD', 1330000.00, 'PENDING'),
+      (3, 3, 'COD', 1330000.00, 'PENDING'),
+      (4, 4, 'VNPAY', 1330000.00, 'PENDING'),
+      (5, 5, 'COD', 1330000.00, 'PENDING')
     ON CONFLICT (id) DO NOTHING;
   `);
 
-  console.log("🎉 Hoàn tất nạp dữ liệu bằng Raw SQL thành công!");
+  console.log("🎉 Hoàn tất nạp dữ liệu!");
 }
 
 main()
