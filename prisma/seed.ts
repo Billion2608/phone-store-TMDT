@@ -2,10 +2,6 @@ import {
   PrismaClient,
   users_role,
   users_status,
-  products_status,
-  categories_status,
-  brands_status,
-  product_variants_status,
   orders_payment_method,
   orders_payment_status,
   orders_status,
@@ -17,7 +13,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Bắt đầu nạp đầy đủ Sản phẩm, Người dùng và Hóa đơn...");
 
-  // 1. Nạp Người dùng (Users)
+  // 1. Nạp Người dùng (Users) - Dùng Enum (users_status.ACTIVE)
   await prisma.users.upsert({
     where: { id: 1 },
     update: {},
@@ -46,7 +42,7 @@ async function main() {
     },
   });
 
-  // 2. Nạp Danh mục & Thương hiệu (Dùng Enum hoặc 'ACTIVE' / true)
+  // 2. Nạp Danh mục & Thương hiệu - Dùng kiểu Boolean (true)
   await prisma.categories.upsert({
     where: { id: 1 },
     update: {},
@@ -55,7 +51,7 @@ async function main() {
       name: "Iphone",
       slug: "iphone",
       image: "/uploads/products/1785859329187-5f60cf0d-0844-4ac6-b6a1-9720fe6c1b34.webp",
-      status: (categories_status?.ACTIVE ?? "ACTIVE") as any,
+      status: true,
     },
   });
 
@@ -67,11 +63,11 @@ async function main() {
       name: "Apple",
       slug: "apple",
       logo: "/uploads/products/1785859364394-7b586e5a-7e5b-4f8e-99a9-0b97c8bd20e2.jpg",
-      status: (brands_status?.ACTIVE ?? "ACTIVE") as any,
+      status: true,
     },
   });
 
-  // 3. Nạp Sản phẩm (Products) & Biến thể (Product Variants)
+  // 3. Nạp Sản phẩm (Products) & Biến thể - Dùng kiểu Boolean (true)
   const product1 = await prisma.products.upsert({
     where: { id: 1 },
     update: {},
@@ -83,7 +79,7 @@ async function main() {
       slug: "iphone",
       short_description: "Điện thoại Iphone chính hãng",
       description: "Mô tả chi tiết sản phẩm Iphone",
-      status: (products_status?.ACTIVE ?? "ACTIVE") as any,
+      status: true,
     },
   });
 
@@ -98,11 +94,11 @@ async function main() {
       sale_price: 1300000.0,
       stock_quantity: 145,
       image: "/uploads/products/1785859450889-487f4066-85a2-46f5-92ab-977f32d6b8af.webp",
-      status: (product_variants_status?.ACTIVE ?? "ACTIVE") as any,
+      status: true,
     },
   });
 
-  // 4. Nạp Hóa đơn / Đơn hàng
+  // 4. Nạp Hóa đơn / Đơn hàng - Dùng Enum cho Order & Payment
   const ordersData = [
     { id: 1, code: "PS20260804-D07CC57F", userId: 1, name: "Administrator", phone: "0900444333", address: "32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long", total: 1330000.0, method: orders_payment_method.COD },
     { id: 2, code: "PS20260804-2DA36E5E", userId: 1, name: "Administrator", phone: "0900444333", address: "32C, Phường Tân Hòa, Thành phố Vĩnh Long, Tỉnh Vĩnh Long", total: 1330000.0, method: orders_payment_method.COD },
