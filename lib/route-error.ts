@@ -1,6 +1,6 @@
 import { AuthenticationError } from "@/lib/auth";
 import { errorResponse } from "@/lib/api-response";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@prisma/client";
 
 export class BusinessError extends Error {
   status: number;
