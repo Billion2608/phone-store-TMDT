@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Bắt đầu nạp đầy đủ Sản phẩm, Người dùng và Hóa đơn...");
 
-  // 1. Nạp Người dùng (Users) - status truyền dưới dạng chuỗi Enum
+  // 1. Nạp Người dùng (Users) - Ép kiểu `as any` cho cả role và status
   await prisma.users.upsert({
     where: { id: 1 },
     update: {},
@@ -15,7 +15,7 @@ async function main() {
       password: "$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v",
       full_name: "Administrator",
       phone: "0900444333",
-      role: "ADMIN",
+      role: "ADMIN" as any,
       status: "ACTIVE" as any,
     },
   });
@@ -29,7 +29,7 @@ async function main() {
       password: "$2a$10$wT.N.u9JzY3lW5vR5vR5v.R5vR5vR5vR5vR5vR5vR5vR5vR5vR5v",
       full_name: "Test User",
       phone: "0999888777",
-      role: "USER",
+      role: "USER" as any,
       status: "ACTIVE" as any,
     },
   });
