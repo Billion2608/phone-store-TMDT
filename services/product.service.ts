@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type {
   ProductCardData,
@@ -96,10 +96,7 @@ function productWhere(query: ProductQuery) {
       ? {
           categories: {
             is: {
-              OR: [
-                { slug: query.category },
-                { categories: { is: { slug: query.category } } },
-              ],
+              slug: query.category,
             },
           },
         }
@@ -129,14 +126,12 @@ export async function getProducts(query: ProductQuery = {}) {
   if (query.sort === "price-asc" || query.sort === "price-desc") {
     const conditions: Prisma.Sql[] = [
       Prisma.sql`p.status = 'ACTIVE'`,
-      Prisma.sql`v.status = 1`,
+      Prisma.sql`v.status = true`,
     ];
     if (query.search)
       conditions.push(Prisma.sql`p.name LIKE ${`%${query.search.trim()}%`}`);
     if (query.category)
-      conditions.push(
-        Prisma.sql`(c.slug = ${query.category} OR pc.slug = ${query.category})`,
-      );
+      conditions.push(Prisma.sql`c.slug = ${query.category}`);
     if (query.brand) conditions.push(Prisma.sql`b.slug = ${query.brand}`);
     if (query.minPrice !== undefined)
       conditions.push(
@@ -152,7 +147,6 @@ export async function getProducts(query: ProductQuery = {}) {
       SELECT p.id
       FROM products p
       JOIN categories c ON c.id = p.category_id
-      LEFT JOIN categories pc ON pc.id = c.parent_id
       LEFT JOIN brands b ON b.id = p.brand_id
       JOIN product_variants v ON v.product_id = p.id
       WHERE ${Prisma.join(conditions, " AND ")}
@@ -209,7 +203,7 @@ export async function getProductsByCategoryRoot(rootSlug: string, limit = 8) {
       product_variants: { some: activeVariantWhere },
       categories: {
         is: {
-          OR: [{ slug: rootSlug }, { categories: { is: { slug: rootSlug } } }],
+          slug: rootSlug,
         },
       },
     },
@@ -223,12 +217,10 @@ export async function getProductsByCategoryRoot(rootSlug: string, limit = 8) {
 export async function getFilterOptions() {
   const [categories, brands] = await Promise.all([
     prisma.categories.findMany({
-      where: { status: true },
       select: { name: true, slug: true },
-      orderBy: [{ sort_order: "asc" }, { name: "asc" }],
+      orderBy: { name: "asc" },
     }),
     prisma.brands.findMany({
-      where: { status: true },
       select: { name: true, slug: true },
       orderBy: { name: "asc" },
     }),
@@ -237,22 +229,25 @@ export async function getFilterOptions() {
 }
 
 export async function getHomeCategories() {
-  return prisma.categories.findMany({
-    where: { status: true },
+  const categories = await prisma.categories.findMany({
     select: {
+      id: true,
       name: true,
       slug: true,
       image: true,
-      other_categories: { where: { status: true }, select: { slug: true } },
     },
-    orderBy: [{ sort_order: "asc" }, { name: "asc" }],
+    orderBy: { name: "asc" },
     take: 12,
   });
+
+  return categories.map((cat) => ({
+    ...cat,
+    id: Number(cat.id),
+  }));
 }
 
 export async function getActiveBrands(limit = 10) {
   return prisma.brands.findMany({
-    where: { status: true },
     select: { name: true, slug: true, logo: true },
     orderBy: { name: "asc" },
     take: limit,
