@@ -2,18 +2,17 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Swal from "sweetalert2";
 
 export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     const form = new FormData(event.currentTarget);
+
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -23,16 +22,24 @@ export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
           password: form.get("password"),
         }),
       });
+
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message);
+
+      if (!response.ok) {
+        throw new Error(result.message || "Đăng nhập thất bại");
+      }
+
       await Swal.fire({
         icon: "success",
         title: "Đăng nhập thành công",
         timer: 900,
         showConfirmButton: false,
       });
-      router.push(nextPath);
-      router.refresh();
+
+      // Ưu tiên chuyển hướng theo redirectUrl của API (Admin vào /admin, Khách vào /)
+      // Dùng window.location.href để Middleware cập nhật Cookie chính xác 100%
+      const destination = result.redirectUrl || nextPath || "/";
+      window.location.href = destination;
     } catch (error) {
       await Swal.fire({
         icon: "warning",
@@ -73,22 +80,22 @@ export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
       <p className="mt-1 text-center text-sm text-[#7d7068]">
         Đăng nhập để theo dõi đơn hàng.
       </p>
-      <label className="form-label mt-5">
+      <label className="form-label mt-5 block text-xs font-semibold text-[#2c221e]">
         Email
         <input
           autoComplete="email"
-          className="form-control"
+          className="form-control mt-1 w-full rounded-md border border-[#e7dfd5] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#8c6d53]"
           name="email"
           placeholder="tenban@email.com"
           required
           type="email"
         />
       </label>
-      <label className="form-label mt-3">
+      <label className="form-label mt-3 block text-xs font-semibold text-[#2c221e]">
         Mật khẩu
         <input
           autoComplete="current-password"
-          className="form-control"
+          className="form-control mt-1 w-full rounded-md border border-[#e7dfd5] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#8c6d53]"
           minLength={6}
           name="password"
           placeholder="Nhập mật khẩu"
@@ -105,7 +112,7 @@ export function LoginForm({ nextPath = "/" }: { nextPath?: string }) {
         </Link>
       </div>
       <button
-        className="mt-4 h-10 w-full rounded-md bg-[#8c6d53] text-sm font-bold text-white transition-colors hover:bg-[#6f523e] disabled:bg-[#c7b8ad]"
+        className="mt-4 h-10 w-full rounded-md bg-[#8c6d53] text-sm font-bold text-white transition-colors hover:bg-[#6f523e] disabled:bg-[#c7b8ad] cursor-pointer"
         disabled={loading}
       >
         {loading ? "Đang đăng nhập..." : "Đăng nhập"}
