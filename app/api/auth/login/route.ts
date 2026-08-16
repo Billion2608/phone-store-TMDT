@@ -1,51 +1,45 @@
-import { cookies } from "next/headers";
-import { z } from "zod";
-
-import { AUTH_COOKIE_MAX_AGE, AUTH_COOKIE_NAME } from "@/lib/auth";
-import { errorResponse, successResponse } from "@/lib/api-response";
-import { signToken } from "@/lib/jwt";
-import { authenticateUser, AuthServiceError } from "@/services/auth.service";
-
-const loginSchema = z.object({
-  email: z.email("Email không hợp lệ."),
-  password: z.string().min(1, "Mật khẩu là bắt buộc."),
-});
+import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs"; // hoặc thư viện hash pass bạn dùng
 
 export async function POST(request: Request) {
   try {
-    const body: unknown = await request.json();
-    const parsed = loginSchema.safeParse(body);
+    const { email, password } = await request.json();
 
-    if (!parsed.success) {
-      return errorResponse(
-        parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ.",
-        422,
-      );
+    // 1. Tìm user theo Email
+    const user = await db.user.findUnique({ where: { email } });
+    if (!user) {
+      return NextResponse.json({ message: "Tài khoản không tồn tại!" }, { status: 400 });
     }
 
-    const user = await authenticateUser(
-      parsed.data.email,
-      parsed.data.password,
-    );
-    const token = signToken({ userId: user.id, role: user.role });
-    const cookieStore = await cookies();
-    cookieStore.set(AUTH_COOKIE_NAME, token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: AUTH_COOKIE_MAX_AGE,
+    // 2. Kiểm tra nếu tài khoản bị KHÓA
+    if (user.status === "LOCKED" || user.isBlocked) {
+      return NextResponse.json({ message: "Tài khoản của bạn đã bị khóa!" }, { status: 403 });
+    }
+
+    // 3. Kiểm tra Mật khẩu
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return NextResponse.json({ message: "Mật khẩu không chính xác!" }, { status: 400 });
+    }
+
+    // 4. Phân luồng chuyển hướng dựa trên VAI TRÒ (ROLE)
+    // Nếu role là ADMIN thì vào /admin, ngược lại về Trang chủ /
+    const redirectUrl = user.role === "ADMIN" ? "/admin" : "/";
+
+    const response = NextResponse.json({
+      success: true,
+      redirectUrl,
+      user: { id: user.id, email: user.email, role: user.role }
     });
 
-    return successResponse(user);
-  } catch (error) {
-    if (error instanceof AuthServiceError) {
-      return errorResponse(error.message, error.status);
-    }
-    if (error instanceof SyntaxError) {
-      return errorResponse("Nội dung yêu cầu không hợp lệ.", 400);
-    }
+    // 5. Lưu Cookie chứa Token/Role
+    response.cookies.set("token", generateToken(user), {
+      httpOnly: true,
+      path: "/",
+    });
 
-    return errorResponse("Không thể đăng nhập lúc này.", 500);
+    return response;
+  } catch (error) {
+    return NextResponse.json({ message: "Lỗi đăng nhập server" }, { status: 500 });
   }
 }
