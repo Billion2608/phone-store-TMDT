@@ -12,34 +12,35 @@ async function main() {
   try {
     // 1. Users (Admin: admin@gmail.com / admin@1234)
     await client.query(`
-      INSERT INTO "users" ("id", "email", "password", "full_name", "phone", "role", "status")
+      INSERT INTO "users" ("id", "email", "password", "full_name", "phone", "role", "status", "created_at", "updated_at")
       VALUES 
-        (1, 'admin@gmail.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', '0900444333', 'ADMIN'::text::users_role, 'ACTIVE'::text::users_status),
-        (2, 'user@phonestore.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Test User', '0999888777', 'USER'::text::users_role, 'ACTIVE'::text::users_status)
+        (1, 'admin@gmail.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', '0900444333', 'ADMIN'::text::users_role, 'ACTIVE'::text::users_status, NOW(), NOW()),
+        (2, 'user@phonestore.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Test User', '0999888777', 'USER'::text::users_role, 'ACTIVE'::text::users_status, NOW(), NOW())
       ON CONFLICT ("id") DO UPDATE SET 
         "email" = EXCLUDED."email",
-        "password" = EXCLUDED."password";
+        "password" = EXCLUDED."password",
+        "updated_at" = NOW();
     `);
 
     // 2. Categories
     await client.query(`
-      INSERT INTO "categories" ("id", "name", "slug", "image", "status")
+      INSERT INTO "categories" ("id", "name", "slug", "image", "status", "created_at", "updated_at")
       VALUES 
-        (1, 'iPhone', 'iphone', '/uploads/categories/iphone.webp', true),
-        (2, 'Samsung', 'samsung', '/uploads/categories/samsung.webp', true),
-        (3, 'Xiaomi', 'xiaomi', '/uploads/categories/xiaomi.webp', true),
-        (4, 'OPPO', 'oppo', '/uploads/categories/oppo.webp', true)
+        (1, 'iPhone', 'iphone', '/uploads/categories/iphone.webp', true, NOW(), NOW()),
+        (2, 'Samsung', 'samsung', '/uploads/categories/samsung.webp', true, NOW(), NOW()),
+        (3, 'Xiaomi', 'xiaomi', '/uploads/categories/xiaomi.webp', true, NOW(), NOW()),
+        (4, 'OPPO', 'oppo', '/uploads/categories/oppo.webp', true, NOW(), NOW())
       ON CONFLICT ("id") DO NOTHING;
     `);
 
     // 3. Brands
     await client.query(`
-      INSERT INTO "brands" ("id", "name", "slug", "logo", "status")
+      INSERT INTO "brands" ("id", "name", "slug", "logo", "status", "created_at", "updated_at")
       VALUES 
-        (1, 'Apple', 'apple', '/uploads/brands/apple.png', true),
-        (2, 'Samsung', 'samsung', '/uploads/brands/samsung.png', true),
-        (3, 'Xiaomi', 'xiaomi', '/uploads/brands/xiaomi.png', true),
-        (4, 'OPPO', 'oppo', '/uploads/brands/oppo.png', true)
+        (1, 'Apple', 'apple', '/uploads/brands/apple.png', true, NOW(), NOW()),
+        (2, 'Samsung', 'samsung', '/uploads/brands/samsung.png', true, NOW(), NOW()),
+        (3, 'Xiaomi', 'xiaomi', '/uploads/brands/xiaomi.png', true, NOW(), NOW()),
+        (4, 'OPPO', 'oppo', '/uploads/brands/oppo.png', true, NOW(), NOW())
       ON CONFLICT ("id") DO NOTHING;
     `);
 
@@ -86,11 +87,12 @@ async function main() {
 
     for (const p of productsData) {
       await client.query(`
-        INSERT INTO "products" ("id", "category_id", "brand_id", "name", "slug", "short_description", "description", "status")
-        VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE'::text::products_status)
+        INSERT INTO "products" ("id", "category_id", "brand_id", "name", "slug", "short_description", "description", "status", "created_at", "updated_at")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE'::text::products_status, NOW(), NOW())
         ON CONFLICT ("id") DO UPDATE SET
           "name" = EXCLUDED."name",
-          "short_description" = EXCLUDED."short_description";
+          "short_description" = EXCLUDED."short_description",
+          "updated_at" = NOW();
       `, p);
     }
 
@@ -111,18 +113,19 @@ async function main() {
       const img = `/uploads/products/phone-${i}.webp`;
 
       await client.query(`
-        INSERT INTO "product_variants" ("id", "product_id", "sku", "price", "sale_price", "stock_quantity", "image", "status")
-        VALUES ($1, $2, $3, $4, $5, 50, $6, true)
+        INSERT INTO "product_variants" ("id", "product_id", "sku", "price", "sale_price", "stock_quantity", "image", "status", "created_at", "updated_at")
+        VALUES ($1, $2, $3, $4, $5, 50, $6, true, NOW(), NOW())
         ON CONFLICT ("id") DO UPDATE SET
           "price" = EXCLUDED."price",
-          "sale_price" = EXCLUDED."sale_price";
+          "sale_price" = EXCLUDED."sale_price",
+          "updated_at" = NOW();
       `, [i, i, sku, price, salePrice, img]);
     }
 
     console.log("🎉 Nạp thành công Admin và 30 sản phẩm!");
   } catch (err) {
     console.error("❌ Lỗi nạp dữ liệu:", err.message);
-    process.exit(0);
+    process.exit(1);
   } finally {
     await client.end();
   }
