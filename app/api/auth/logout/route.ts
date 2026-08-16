@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 
 export async function POST() {
-  const response = NextResponse.json({ message: "Đăng xuất thành công" });
+  const response = NextResponse.json({ success: true, message: "Logged out" });
 
-  // Danh sách các tên cookie thường dùng để lưu token
-  const cookieNames = ["token", "auth_token", "session", "user_session", "next-auth.session-token"];
+  // Xóa cookie chứa token (thường là token, session, auth-token...)
+  // Bạn có thể thêm các tên cookie khác nếu dự án có dùng
+  const cookiesToClear = ["token", "session", "auth-token", "next-auth.session-token"];
 
-  cookieNames.forEach((name) => {
-    response.cookies.set(name, "", {
+  cookiesToClear.forEach((cookieName) => {
+    response.cookies.set(cookieName, "", {
       httpOnly: true,
       expires: new Date(0),
       path: "/",
