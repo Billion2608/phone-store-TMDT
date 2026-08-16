@@ -1,84 +1,109 @@
-import { cookies } from "next/headers";
+import {
+  BadgeCheck,
+  Heart,
+  Headphones,
+  MapPin,
+  Percent,
+  Phone,
+  Smartphone,
+  Truck,
+} from "lucide-react";
 import Link from "next/link";
-import { User, LogOut, ShieldAlert, ShoppingBag } from "lucide-react";
+import { Suspense } from "react";
+import { AccountNav } from "@/components/layout/AccountNav";
+import { CartHeaderAction } from "@/components/layout/CartHeaderAction";
+import { HeaderSearch } from "@/components/layout/HeaderSearch";
+import { MobileMenu } from "@/components/layout/MobileMenu";
+import { getHomeCategories } from "@/services/product.service";
 
-export async function AccountNav() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-  const userCookie = cookieStore.get("user")?.value;
-  const userRole = cookieStore.get("user_role")?.value;
+const quickLinks = [
+  ["Điện thoại", "/products?category=dien-thoai", Smartphone],
+  ["Apple", "/products?brand=apple", null],
+  ["Samsung", "/products?brand=samsung", null],
+  ["Xiaomi", "/products?brand=xiaomi", null],
+  ["OPPO", "/products?brand=oppo", null],
+  ["Phụ kiện", "/products?category=phu-kien", Headphones],
+  ["Khuyến mãi", "/products?sort=price-asc", Percent],
+] as const;
 
-  let user = null;
-  if (userCookie) {
-    try {
-      user = JSON.parse(userCookie);
-    } catch {
-      user = null;
-    }
-  }
-
-  // CHƯA ĐĂNG NHẬP: Hiển thị nút "Tài khoản" dẫn đến trang /login
-  if (!token || !user) {
-    return (
-      <Link href="/login" className="header-action flex items-center gap-1.5">
-        <User size={18} />
-        <span className="hidden xl:inline">Tài khoản</span>
-      </Link>
-    );
-  }
-
-  // ĐÃ ĐĂNG NHẬP: Hiển thị tên người dùng và menu xổ xuống
-  const isAdmin = userRole === "ADMIN" || userRole === "MANAGER";
-
+export async function Header() {
+  const categories = await getHomeCategories();
   return (
-    <div className="relative group">
-      <Link
-        href={isAdmin ? "/admin" : "/profile"}
-        className="header-action flex items-center gap-1.5"
-      >
-        <User size={18} />
-        <span className="hidden max-w-[110px] truncate xl:inline">
-          {user.name || "Tài khoản"}
-        </span>
-      </Link>
-
-      {/* Menu xổ xuống khi rê chuột vào */}
-      <div className="absolute right-0 top-full z-50 hidden w-48 rounded-md border border-[#e7dfd5] bg-white p-1.5 shadow-lg group-hover:block text-[#2c221e]">
-        <div className="border-b border-[#eee8e1] px-3 py-2">
-          <p className="truncate text-xs font-bold">{user.name}</p>
-          <p className="truncate text-[11px] text-[#7d7068]">{user.email}</p>
-        </div>
-
-        {isAdmin && (
-          <Link
-            href="/admin"
-            className="flex items-center gap-2 rounded px-3 py-2 text-xs font-semibold text-[#8c6d53] hover:bg-[#f7f4f0]"
+    <header className="sticky top-0 z-50 shadow-[0_2px_8px_rgba(79,55,40,0.14)]">
+      <div className="hidden border-b border-white/10 bg-[#6f523e] text-[12px] text-white/90 sm:block">
+        <div className="mx-auto flex h-8 max-w-[1280px] items-center justify-between px-4">
+          <div className="flex items-center gap-5">
+            <span className="flex items-center gap-1.5">
+              <Truck size={14} /> Miễn phí vận chuyển từ 5 triệu
+            </span>
+            <span className="flex items-center gap-1.5">
+              <BadgeCheck size={14} /> Hàng chính hãng 100%
+            </span>
+            <span className="hidden items-center gap-1.5 lg:flex">
+              <MapPin size={14} /> Hệ thống cửa hàng toàn quốc
+            </span>
+          </div>
+          <a
+            className="flex items-center gap-1.5 font-bold"
+            href="tel:19001234"
           >
-            <ShieldAlert size={14} /> Trang Quản trị
-          </Link>
-        )}
-
-        <Link
-          href="/profile/orders"
-          className="flex items-center gap-2 rounded px-3 py-2 text-xs hover:bg-[#f7f4f0]"
-        >
-          <ShoppingBag size={14} /> Đơn hàng của tôi
-        </Link>
-
-        <Link
-          href="/profile"
-          className="flex items-center gap-2 rounded px-3 py-2 text-xs hover:bg-[#f7f4f0]"
-        >
-          <User size={14} /> Tài khoản của tôi
-        </Link>
-
-        <a
-          href="/api/auth/logout"
-          className="flex items-center gap-2 rounded px-3 py-2 text-xs text-red-600 hover:bg-red-50"
-        >
-          <LogOut size={14} /> Đăng xuất
-        </a>
+            <Phone size={13} /> 1900 1234
+          </a>
+        </div>
       </div>
-    </div>
+      <div className="bg-[linear-gradient(110deg,#806047_0%,#9a7658_72%,#b48d6a_100%)] text-white">
+        <div className="mx-auto flex min-h-[68px] max-w-[1280px] flex-wrap items-center gap-3 px-3 py-3 sm:px-4 lg:flex-nowrap">
+          <MobileMenu />
+          <Link
+            aria-label="PhoneStore - Trang chủ"
+            className="flex shrink-0 items-center gap-2"
+            href="/"
+          >
+            <span className="grid size-10 place-items-center rounded-md bg-[#fdfbf7] text-lg font-black text-[#8c6d53]">
+              PS
+            </span>
+            <span className="hidden sm:block">
+              <strong className="block text-xl leading-none">PhoneStore</strong>
+              <small className="mt-1 block text-[10px] font-bold uppercase tracking-[0.16em] text-white/75">
+                Mobile & Technology
+              </small>
+            </span>
+          </Link>
+          <HeaderSearch categories={categories} />
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <Link
+              aria-label="Yêu thích"
+              className="header-action"
+              href="/profile/wishlist"
+            >
+              <Heart size={18} />
+              <span className="hidden xl:inline">Yêu thích</span>
+            </Link>
+            <CartHeaderAction />
+            <Suspense
+              fallback={
+                <span className="hidden h-10 w-20 rounded-md bg-black/10 xl:block" />
+              }
+            >
+              <AccountNav />
+            </Suspense>
+          </div>
+        </div>
+        <nav className="hidden border-t border-white/15 lg:block">
+          <div className="mx-auto flex h-10 max-w-[1280px] items-center justify-center px-4">
+            {quickLinks.map(([label, href, Icon]) => (
+              <Link
+                className="flex h-full items-center gap-1.5 border-x border-transparent px-5 text-[13px] font-semibold text-white/95 transition-colors hover:bg-black/10"
+                href={href}
+                key={label}
+              >
+                {Icon ? <Icon size={14} /> : null}
+                {label}
+              </Link>
+            ))}
+          </div>
+        </nav>
+      </div>
+    </header>
   );
 }
