@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma"; // Import chính xác theo dự án của bạn
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
@@ -84,6 +84,22 @@ export async function POST(request: Request) {
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
+
+    // Thêm cookie "user" để Client Component (Header) đọc thông tin đăng nhập
+    response.cookies.set(
+      "user",
+      JSON.stringify({
+        id: user.id.toString(),
+        name: user.full_name || user.email,
+        email: user.email,
+        role: user.role,
+      }),
+      {
+        httpOnly: false, // Bắt buộc false để document.cookie đọc được
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+      }
+    );
 
     return response;
   } catch (error) {
