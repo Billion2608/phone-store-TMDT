@@ -5,15 +5,15 @@ import Link from "next/link";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => {
     try {
-      // 1. Gọi API xóa Cookie trên Server
+      // 1. Gọi API xóa Cookie phía Server
       await fetch("/api/auth/logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-    } catch (error) {
-      console.error("Lỗi khi gọi API đăng xuất:", error);
+    } catch (e) {
+      console.error("Lỗi logout:", e);
     } finally {
-      // 2. Dọn dẹp sạch sẽ bộ nhớ phía Client
+      // 2. Dọn sạch bộ nhớ trình duyệt Client
       try {
         localStorage.clear();
         sessionStorage.clear();
@@ -22,12 +22,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             .replace(/^ +/, "")
             .replace(/=.*/, "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/");
         });
-      } catch (e) {
-        console.error("Lỗi dọn dẹp storage:", e);
+      } catch (err) {
+        console.error(err);
       }
 
-      // 3. Ép tải lại trang Login từ Server (chống dính Server Cache của Next.js)
-      window.location.href = "/login";
+      // 3. Ép điều hướng cứng bằng replace để đè lịch sử trình duyệt & xóa cache
+      window.location.replace("/login?logout=" + Date.now());
     }
   };
 
