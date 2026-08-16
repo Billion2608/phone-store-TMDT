@@ -3,30 +3,19 @@
 import Link from "next/link";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const handleLogout = () => {
-    // 1. Gọi API đăng xuất ở background (không await để tránh bị treo code)
-    fetch("/api/auth/logout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    }).catch((err) => console.error("Lỗi gọi API logout:", err));
-
-    // 2. Xóa sạch bộ nhớ tạm Client
+  // Hàm dọn dẹp bộ nhớ nhanh khi click
+  const clearSession = () => {
     try {
       localStorage.clear();
       sessionStorage.clear();
-
-      // Xóa tất cả cookie client-side
       document.cookie.split(";").forEach((c) => {
-        const eqPos = c.indexOf("=");
-        const name = eqPos > -1 ? c.substring(0, eqPos) : c;
-        document.cookie = name.trim() + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/");
       });
+      // Bắn request xóa cookie server ở background
+      fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     } catch (e) {
-      console.error("Lỗi xóa storage:", e);
+      console.error(e);
     }
-
-    // 3. Ép trình duyệt chuyển thẳng sang trang Login ngay lập tức
-    window.location.href = "/login";
   };
 
   const navItems = [
@@ -83,14 +72,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             ← Xem cửa hàng
           </Link>
 
-          {/* Nút Đăng xuất ở Sidebar */}
-          <button
-            type="button"
-            onClick={handleLogout}
+          {/* Nút Đăng xuất ở Sidebar (Thẻ A trực tiếp) */}
+          <a
+            href="/login"
+            onClick={clearSession}
             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-300 hover:text-red-100 hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer"
           >
             🚪 Đăng xuất
-          </button>
+          </a>
         </div>
       </aside>
 
@@ -125,7 +114,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               🔔
             </button>
 
-            {/* Khối Admin + Nút Đăng xuất trên Header */}
+            {/* Khối Admin + Nút Đăng xuất trên Header (Thẻ A trực tiếp) */}
             <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
               <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-xs font-bold text-amber-800">
                 🛡️
@@ -135,13 +124,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <p className="font-bold text-gray-800">Administrator</p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleLogout}
+              <a
+                href="/login"
+                onClick={clearSession}
                 className="ml-2 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
               >
                 <span>🚪</span> Đăng xuất
-              </button>
+              </a>
             </div>
           </div>
         </header>
