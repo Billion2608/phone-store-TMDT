@@ -3,30 +3,30 @@
 import Link from "next/link";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    // 1. Gọi API đăng xuất ở background (không await để tránh bị treo code)
+    fetch("/api/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }).catch((err) => console.error("Lỗi gọi API logout:", err));
+
+    // 2. Xóa sạch bộ nhớ tạm Client
     try {
-      // 1. Gọi API đăng xuất custom của bạn
-      await fetch("/api/auth/logout", { 
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-      });
-    } catch (error) {
-      console.error("Lỗi đăng xuất API:", error);
-    } finally {
-      // 2. Xóa toàn bộ LocalStorage và SessionStorage
       localStorage.clear();
       sessionStorage.clear();
 
-      // 3. Xóa Cookie client-side dự phòng
+      // Xóa tất cả cookie client-side
       document.cookie.split(";").forEach((c) => {
-        document.cookie = c
-          .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date(0).toUTCString() + ";path=/");
+        const eqPos = c.indexOf("=");
+        const name = eqPos > -1 ? c.substring(0, eqPos) : c;
+        document.cookie = name.trim() + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
       });
-
-      // 4. Chuyển hướng cứng về trang /login và ép reload toàn trang
-      window.location.replace("/login");
+    } catch (e) {
+      console.error("Lỗi xóa storage:", e);
     }
+
+    // 3. Ép trình duyệt chuyển thẳng sang trang Login ngay lập tức
+    window.location.href = "/login";
   };
 
   const navItems = [
@@ -53,7 +53,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
             <div>
               <h1 className="font-bold text-base leading-tight">PhoneStore</h1>
-              <p className="text-[10px] text-amber-200 tracking-wider uppercase font-semibold">TRUNG TÂM QUẢN TRỊ</p>
+              <p className="text-[10px] text-amber-200 tracking-wider uppercase font-semibold">
+                TRUNG TÂM QUẢN TRỊ
+              </p>
             </div>
           </div>
 
@@ -112,7 +114,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span className="absolute left-3 top-2 text-xs text-gray-400">🔍</span>
             </div>
 
-            <Link href="/" className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 text-sm" title="Về trang chủ">
+            <Link
+              href="/"
+              className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 text-sm"
+              title="Về trang chủ"
+            >
               🏠
             </Link>
             <button className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 text-sm" title="Thông báo">
