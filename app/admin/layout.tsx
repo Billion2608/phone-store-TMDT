@@ -1,14 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-
   const handleLogout = async () => {
     try {
-      // 1. Gọi API xóa Cookie phía Server và đợi phản hồi hoàn tất
+      // 1. Gọi API xóa Cookie trên Server
       await fetch("/api/auth/logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -16,7 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } catch (error) {
       console.error("Lỗi khi gọi API đăng xuất:", error);
     } finally {
-      // 2. Xóa sạch bộ nhớ tạm phía Client
+      // 2. Dọn dẹp sạch sẽ bộ nhớ phía Client
       try {
         localStorage.clear();
         sessionStorage.clear();
@@ -29,9 +26,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         console.error("Lỗi dọn dẹp storage:", e);
       }
 
-      // 3. Chuyển hướng sang trang Login và làm mới Router
-      router.push("/login");
-      router.refresh();
+      // 3. Ép tải lại trang Login từ Server (chống dính Server Cache của Next.js)
+      window.location.href = "/login";
     }
   };
 
