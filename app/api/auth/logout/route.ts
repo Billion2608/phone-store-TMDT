@@ -1,17 +1,26 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 export async function POST() {
-  const response = NextResponse.json({ success: true, message: "Logged out" });
+  const response = NextResponse.json({ success: true });
 
-  // Xóa cookie chứa token (thường là token, session, auth-token...)
-  // Bạn có thể thêm các tên cookie khác nếu dự án có dùng
-  const cookiesToClear = ["token", "session", "auth-token", "next-auth.session-token"];
+  // 1. Xóa bằng cookies() API của Next.js
+  const cookieStore = await cookies();
+  const allCookies = cookieStore.getAll();
+  
+  allCookies.forEach((c) => {
+    cookieStore.delete(c.name);
+  });
 
-  cookiesToClear.forEach((cookieName) => {
-    response.cookies.set(cookieName, "", {
+  // 2. Xóa đè thêm 1 lần nữa ở Response Header để đảm bảo browser chấp nhận
+  const commonCookieNames = ["token", "session", "auth_token", "next-auth.session-token"];
+  
+  commonCookieNames.forEach((name) => {
+    response.cookies.set(name, "", {
       httpOnly: true,
       expires: new Date(0),
       path: "/",
+      maxAge: 0,
     });
   });
 
