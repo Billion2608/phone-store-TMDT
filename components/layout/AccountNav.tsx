@@ -7,7 +7,7 @@ export async function AccountNav() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
 
-  // 1. Nếu không có token -> Chưa đăng nhập
+  // 1. Kiểm tra Cookie token
   if (!token) {
     return (
       <Link href="/login" className="header-action flex items-center gap-1.5">
@@ -17,11 +17,21 @@ export async function AccountNav() {
     );
   }
 
-  // 2. Lấy thông tin người dùng trực tiếp từ Database bằng ID trong Cookie
   let user = null;
+
   try {
-    user = await prisma.users.findUnique({
-      where: { id: BigInt(token) },
+    // Ép kiểu ID linh hoạt để không bị crash Prisma (hỗ trợ cả Int, BigInt và String)
+    const numericId = Number(token);
+    const isNumber = !isNaN(numericId);
+
+    user = await prisma.users.findFirst({
+      where: {
+        OR: [
+          ...(isNumber ? [{ id: numericId as any }] : []),
+          ...(isNumber ? [{ id: BigInt(token) as any }] : []),
+          { id: token as any },
+        ],
+      },
       select: {
         id: true,
         full_name: true,
@@ -33,7 +43,7 @@ export async function AccountNav() {
     console.error("Lỗi lấy thông tin user trong AccountNav:", error);
   }
 
-  // Nếu ID không hợp lệ hoặc user không tồn tại -> Hiển thị chưa đăng nhập
+  // 2. Nếu không tìm thấy User trong Database
   if (!user) {
     return (
       <Link href="/login" className="header-action flex items-center gap-1.5">
@@ -43,7 +53,7 @@ export async function AccountNav() {
     );
   }
 
-  // 3. ĐÃ ĐĂNG NHẬP: Hiển thị tên người dùng và Menu cá nhân
+  // 3. Đã xác thực thành công
   const userRole = (user.role || "").toUpperCase();
   const isAdmin = userRole === "ADMIN" || userRole === "MANAGER";
   const displayName = user.full_name || user.email;
@@ -60,7 +70,7 @@ export async function AccountNav() {
         </span>
       </Link>
 
-      {/* Menu xổ xuống khi rê chuột */}
+      {/* Menu dropdown khi hover */}
       <div className="absolute right-0 top-full z-50 hidden w-48 rounded-md border border-[#e7dfd5] bg-white p-1.5 shadow-lg group-hover:block text-[#2c221e]">
         <div className="border-b border-[#eee8e1] px-3 py-2">
           <p className="truncate text-xs font-bold">{displayName}</p>
