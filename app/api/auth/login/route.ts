@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getProducts } from "@/services/product.service"; // Dùng để kiểm tra kết nối nếu cần
-
-// Đảm bảo dùng đúng file db trong project của bạn
-// Bạn hãy kiểm tra lại đường dẫn import db trong dự án (thường là "@/lib/db" hoặc "@/lib/prisma")
-import { db } from "@/lib/db"; 
+import { prisma } from "@/lib/prisma"; // Import chính xác theo dự án của bạn
 
 export async function POST(request: Request) {
   try {
@@ -18,9 +14,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Tìm user theo Email
-    const user = await db.user.findUnique({
-      where: { email: email.trim().toLowerCase() },
+    // 1. Tìm user trong Database bằng Prisma
+    const user = await prisma.users.findFirst({
+      where: { 
+        email: email.trim().toLowerCase() 
+      },
     });
 
     if (!user) {
@@ -30,15 +28,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Kiểm tra nếu tài khoản đang bị KHÓA
-    if (user.status === "LOCKED" || user.status === "BLOCKED" || user.isBlocked) {
+    // 2. Kiểm tra tài khoản bị khóa (status trong DB)
+    if (user.status === "LOCKED" || user.status === "INACTIVE") {
       return NextResponse.json(
         { message: "Tài khoản của bạn đã bị khóa!" },
         { status: 403 }
       );
     }
 
-    // 3. Kiểm tra Mật khẩu (so sánh mã hóa hoặc chuỗi gốc)
+    // 3. Kiểm tra mật khẩu (Xử lý cả mật khẩu mã hóa bcrypt hoặc mật khẩu thường)
     let isPasswordValid = false;
     if (user.password.startsWith("$2a$") || user.password.startsWith("$2b$")) {
       isPasswordValid = await bcrypt.compare(password, user.password);
@@ -65,20 +63,20 @@ export async function POST(request: Request) {
       message: "Đăng nhập thành công!",
       redirectUrl,
       user: {
-        id: user.id,
-        name: user.name,
+        id: user.id.toString(),
+        name: user.full_name || user.email,
         email: user.email,
         role: user.role,
       },
     });
 
-    // 5. Lưu Cookie phiên đăng nhập
-    response.cookies.set("token", user.id, {
+    // 5. Lưu Session Cookie
+    response.cookies.set("token", user.id.toString(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7, // 7 ngày
+      maxAge: 60 * 60 * 24 * 7,
     });
 
     response.cookies.set("user_role", user.role || "USER", {
@@ -91,7 +89,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Lỗi đăng nhập:", error);
     return NextResponse.json(
-      { message: "Lỗi kết nối cơ sở dữ liệu. Vui lòng kiểm tra lại file db!" },
+      { message: "Có lỗi hệ thống xảy ra khi đăng nhập!" },
       { status: 500 }
     );
   }
