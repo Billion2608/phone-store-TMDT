@@ -10,15 +10,18 @@ async function main() {
   console.log("🌱 Đang nạp dữ liệu Admin và 30 sản phẩm điện thoại...");
 
   try {
-    // 1. Users (Admin: admin@gmail.com / admin@1234)
+    // 1. Users (Bắt xung đột theo "email" thay vì "id")
     await client.query(`
-      INSERT INTO "users" ("id", "email", "password", "full_name", "phone", "role", "status", "created_at", "updated_at")
+      INSERT INTO "users" ("email", "password", "full_name", "phone", "role", "status", "created_at", "updated_at")
       VALUES 
-        (1, 'admin@gmail.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', '0900444333', 'ADMIN'::text::users_role, 'ACTIVE'::text::users_status, NOW(), NOW()),
-        (2, 'user@phonestore.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Test User', '0999888777', 'USER'::text::users_role, 'ACTIVE'::text::users_status, NOW(), NOW())
-      ON CONFLICT ("id") DO UPDATE SET 
-        "email" = EXCLUDED."email",
+        ('admin@gmail.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', '0900444333', 'ADMIN'::text::users_role, 'ACTIVE'::text::users_status, NOW(), NOW()),
+        ('user@phonestore.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Test User', '0999888777', 'USER'::text::users_role, 'ACTIVE'::text::users_status, NOW(), NOW())
+      ON CONFLICT ("email") DO UPDATE SET 
         "password" = EXCLUDED."password",
+        "full_name" = EXCLUDED."full_name",
+        "phone" = EXCLUDED."phone",
+        "role" = EXCLUDED."role",
+        "status" = EXCLUDED."status",
         "updated_at" = NOW();
     `);
 
@@ -96,7 +99,7 @@ async function main() {
       `, p);
     }
 
-    // 5. Product Variants (Biến thể tương ứng cho 30 sản phẩm)
+    // 5. Product Variants
     const basePrices = [
       30000000, 25000000, 22000000, 19000000, 24000000,
       21000000, 17000000, 14000000, 11000000, 9000000,
@@ -108,7 +111,7 @@ async function main() {
 
     for (let i = 1; i <= 30; i++) {
       const price = basePrices[i - 1];
-      const salePrice = price * 0.9; // Giảm giá 10%
+      const salePrice = price * 0.9;
       const sku = `SKU-PHONE-${i}`;
       const img = `/uploads/products/phone-${i}.webp`;
 
