@@ -10,20 +10,63 @@ async function main() {
   console.log("🌱 Đang nạp dữ liệu Admin và 30 sản phẩm điện thoại...");
 
   try {
-    // 1. Xóa tài khoản test cũ để tránh xung đột UNIQUE trên cả email lẫn phone
+    // Truy vấn động các giá trị Enum đang tồn tại trong Database
+    const getEnumValues = async (enumName) => {
+      const res = await client.query(
+        `
+        SELECT e.enumlabel 
+        FROM pg_type t 
+        JOIN pg_enum e ON t.oid = e.enumtypid 
+        WHERE t.typname = $1
+      `,
+        [enumName]
+      );
+      return res.rows.map((r) => r.enumlabel);
+    };
+
+    const userRoles = await getEnumValues("users_role");
+    const userStatuses = await getEnumValues("users_status");
+    const productStatuses = await getEnumValues("products_status");
+
+    // Khớp giá trị Enum tương ứng trong DB (không phân biệt hoa/thường)
+    const adminRoleVal =
+      userRoles.find((v) => v.toUpperCase() === "ADMIN") ||
+      userRoles[0] ||
+      "ADMIN";
+    const userRoleVal =
+      userRoles.find((v) =>
+        ["USER", "CUSTOMER", "CLIENT"].includes(v.toUpperCase())
+      ) ||
+      userRoles[1] ||
+      userRoles[0] ||
+      "USER";
+
+    const activeUserStatusVal =
+      userStatuses.find((v) => v.toUpperCase() === "ACTIVE") ||
+      userStatuses[0] ||
+      "ACTIVE";
+    const activeProdStatusVal =
+      productStatuses.find((v) => v.toUpperCase() === "ACTIVE") ||
+      productStatuses[0] ||
+      "ACTIVE";
+
+    // 1. Xóa tài khoản test cũ để tránh xung đột
     await client.query(`
       DELETE FROM "users" 
       WHERE "email" IN ('admin@gmail.com', 'user@phonestore.com') 
          OR "phone" IN ('0900444333', '0999888777');
     `);
 
-    // Tạo mới tài khoản Admin và User
-    await client.query(`
+    // Tạo mới tài khoản Admin và User bằng Enum chuẩn xác
+    await client.query(
+      `
       INSERT INTO "users" ("email", "password", "full_name", "phone", "role", "status", "created_at", "updated_at")
       VALUES 
-        ('admin@gmail.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', '0900444333', 'ADMIN'::text::users_role, 'ACTIVE'::text::users_status, NOW(), NOW()),
-        ('user@phonestore.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Test User', '0999888777', 'USER'::text::users_role, 'ACTIVE'::text::users_status, NOW(), NOW());
-    `);
+        ('admin@gmail.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', '0900444333', $1::text::users_role, $2::text::users_status, NOW(), NOW()),
+        ('user@phonestore.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Test User', '0999888777', $3::text::users_role, $2::text::users_status, NOW(), NOW());
+    `,
+      [adminRoleVal, activeUserStatusVal, userRoleVal]
+    );
 
     // 2. Categories
     await client.query(`
@@ -89,24 +132,25 @@ async function main() {
     ];
 
     for (const p of productsData) {
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO "products" ("id", "category_id", "brand_id", "name", "slug", "short_description", "description", "status", "created_at", "updated_at")
-        VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE'::text::products_status, NOW(), NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::text::products_status, NOW(), NOW())
         ON CONFLICT ("id") DO UPDATE SET
           "name" = EXCLUDED."name",
           "short_description" = EXCLUDED."short_description",
           "updated_at" = NOW();
-      `, p);
+      `,
+        [...p, activeProdStatusVal]
+      );
     }
 
     // 5. Product Variants
     const basePrices = [
-      30000000, 25000000, 22000000, 19000000, 24000000,
-      21000000, 17000000, 14000000, 11000000, 9000000,
-      31000000, 23000000, 18000000, 38000000, 20000000,
-      8500000,  6500000,  5200000,  4300000,  12500000,
-      29000000, 19500000, 10500000, 7200000,  4800000,
-      8900000,  42000000, 16000000, 10000000, 6000000
+      30000000, 25000000, 22000000, 19000000, 24000000, 21000000, 17000000,
+      14000000, 11000000, 9000000, 31000000, 23000000, 18000000, 38000000,
+      20000000, 8500000, 6500000, 5200000, 4300000, 12500000, 29000000, 19500000,
+      10500000, 7200000, 4800000, 8900000, 42000000, 16000000, 10000000, 6000000,
     ];
 
     for (let i = 1; i <= 30; i++) {
@@ -115,14 +159,17 @@ async function main() {
       const sku = `SKU-PHONE-${i}`;
       const img = `/uploads/products/phone-${i}.webp`;
 
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO "product_variants" ("id", "product_id", "sku", "price", "sale_price", "stock_quantity", "image", "status", "created_at", "updated_at")
         VALUES ($1, $2, $3, $4, $5, 50, $6, true, NOW(), NOW())
         ON CONFLICT ("id") DO UPDATE SET
           "price" = EXCLUDED."price",
           "sale_price" = EXCLUDED."sale_price",
           "updated_at" = NOW();
-      `, [i, i, sku, price, salePrice, img]);
+      `,
+        [i, i, sku, price, salePrice, img]
+      );
     }
 
     console.log("🎉 Nạp thành công Admin và 30 sản phẩm!");
