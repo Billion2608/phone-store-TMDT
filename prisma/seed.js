@@ -10,19 +10,19 @@ async function main() {
   console.log("🌱 Đang nạp dữ liệu Admin và 30 sản phẩm điện thoại...");
 
   try {
-    // 1. Users (Bắt xung đột theo "email" thay vì "id")
+    // 1. Xóa tài khoản test cũ để tránh xung đột UNIQUE trên cả email lẫn phone
+    await client.query(`
+      DELETE FROM "users" 
+      WHERE "email" IN ('admin@gmail.com', 'user@phonestore.com') 
+         OR "phone" IN ('0900444333', '0999888777');
+    `);
+
+    // Tạo mới tài khoản Admin và User
     await client.query(`
       INSERT INTO "users" ("email", "password", "full_name", "phone", "role", "status", "created_at", "updated_at")
       VALUES 
         ('admin@gmail.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', '0900444333', 'ADMIN'::text::users_role, 'ACTIVE'::text::users_status, NOW(), NOW()),
-        ('user@phonestore.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Test User', '0999888777', 'USER'::text::users_role, 'ACTIVE'::text::users_status, NOW(), NOW())
-      ON CONFLICT ("email") DO UPDATE SET 
-        "password" = EXCLUDED."password",
-        "full_name" = EXCLUDED."full_name",
-        "phone" = EXCLUDED."phone",
-        "role" = EXCLUDED."role",
-        "status" = EXCLUDED."status",
-        "updated_at" = NOW();
+        ('user@phonestore.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Test User', '0999888777', 'USER'::text::users_role, 'ACTIVE'::text::users_status, NOW(), NOW());
     `);
 
     // 2. Categories
